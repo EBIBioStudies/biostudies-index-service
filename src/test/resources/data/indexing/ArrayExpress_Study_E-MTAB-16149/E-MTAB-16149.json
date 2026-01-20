@@ -1,0 +1,1214 @@
+{
+  "accNo" : "E-MTAB-16149",
+  "version" : 2,
+  "schemaVersion" : "1.0",
+  "owner" : "natsukihayami@gmail.com",
+  "submitter" : "biostudies-dev@ebi.ac.uk",
+  "title" : "Gene expression profiling of Arabidopsis thaliana seedlings under high light and/or low temperature for 24 h",
+  "doi" : null,
+  "method" : "FILE",
+  "relPath" : "E-MTAB-/149/E-MTAB-16149",
+  "rootPath" : "E-MTAB-16149",
+  "released" : true,
+  "secretKey" : "9a51e75a-07c4-4725-90bc-d7219d2bd630",
+  "releaseTime" : "2026-01-01T00:00:00Z",
+  "submissionTime" : "2025-11-14T16:10:44.251Z",
+  "modificationTime" : "2026-01-02T14:09:37.524Z",
+  "creationTime" : "2025-11-14T16:10:44.251Z",
+  "section" : {
+    "accNo" : "s-E-MTAB-16149",
+    "type" : "Study",
+    "fileList" : null,
+    "linkList" : null,
+    "attributes" : [ {
+      "name" : "Title",
+      "value" : "Gene expression profiling of Arabidopsis thaliana seedlings under high light and/or low temperature for 24 h",
+      "reference" : false,
+      "nameAttrs" : [ ],
+      "valueAttrs" : [ ]
+    }, {
+      "name" : "Study type",
+      "value" : "transcription profiling by array",
+      "reference" : false,
+      "nameAttrs" : [ ],
+      "valueAttrs" : [ {
+        "name" : "Ontology",
+        "value" : "EFO"
+      }, {
+        "name" : "TermId",
+        "value" : "EFO_0002768"
+      } ]
+    }, {
+      "name" : "Organism",
+      "value" : "Arabidopsis thaliana",
+      "reference" : false,
+      "nameAttrs" : [ ],
+      "valueAttrs" : [ ]
+    }, {
+      "name" : "Description",
+      "value" : "10-day-old Arabidopsis (Col-0) seedlings were grown on germination medium 20 supplemented with 0.8% Bactoagar and 1% (w/v) sucrose under continuous white light (6 Wm-2 = 30 umol m-2s-1) at 22oC. The seedlings were subjected to high light treatment (50 Wm-2 = 250 umol m-2s-1), cold treatments (4oC) under continuous white light  or both for 24 h. Each treatment had three biological replicates. The data sets were normalized and filtered for quality control with GeneSpring (Agilent Technologies) using the default settings.",
+      "reference" : false,
+      "nameAttrs" : [ ],
+      "valueAttrs" : [ ]
+    } ],
+    "sections" : [ {
+      "sections" : [ {
+        "accNo" : "P-MTAB-159602",
+        "type" : "Protocols",
+        "fileList" : null,
+        "linkList" : null,
+        "attributes" : [ {
+          "name" : "Name",
+          "value" : "P-MTAB-159602",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        }, {
+          "name" : "Type",
+          "value" : "sample collection protocol",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ {
+            "name" : "Ontology",
+            "value" : "EFO"
+          }, {
+            "name" : "TermId",
+            "value" : "EFO_0005518"
+          } ]
+        }, {
+          "name" : "Description",
+          "value" : "Samples were collected in 2.0 mL master tubes (Bio Medical Science) and immediately frozen in liquid N2, and then crushed into powders with zirconium dioxide beads using a vertical shaker (ShakeMaster Neo Ver. 1.0, Bio Medical Science). Ground samples were stored at -80°C until extraction.",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        } ],
+        "sections" : [ ],
+        "files" : [ ],
+        "links" : [ ],
+        "extType" : "section"
+      }, {
+        "accNo" : "P-MTAB-159603",
+        "type" : "Protocols",
+        "fileList" : null,
+        "linkList" : null,
+        "attributes" : [ {
+          "name" : "Name",
+          "value" : "P-MTAB-159603",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        }, {
+          "name" : "Type",
+          "value" : "growth protocol",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ {
+            "name" : "Ontology",
+            "value" : "EFO"
+          }, {
+            "name" : "TermId",
+            "value" : "EFO_0003789"
+          } ]
+        }, {
+          "name" : "Description",
+          "value" : "Arabidopsis thaliana (Col-0) were grown on germination medium 20 supplemented with 0.8% (w/v) Bactoagar and 1% (w/v) sucrose under continuous white light (6 Wm^-2 = 30 umol m^-2s^-1) at 22°C for 10 days.",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        } ],
+        "sections" : [ ],
+        "files" : [ ],
+        "links" : [ ],
+        "extType" : "section"
+      }, {
+        "accNo" : "P-MTAB-159604",
+        "type" : "Protocols",
+        "fileList" : null,
+        "linkList" : null,
+        "attributes" : [ {
+          "name" : "Name",
+          "value" : "P-MTAB-159604",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        }, {
+          "name" : "Type",
+          "value" : "nucleic acid extraction protocol",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ {
+            "name" : "Ontology",
+            "value" : "EFO"
+          }, {
+            "name" : "TermId",
+            "value" : "EFO_0002944"
+          } ]
+        }, {
+          "name" : "Description",
+          "value" : "Total RNA was extracted according to previous report (Suzuki et al., 2004, BioTechniques, 37, 542-544).",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        } ],
+        "sections" : [ ],
+        "files" : [ ],
+        "links" : [ ],
+        "extType" : "section"
+      }, {
+        "accNo" : "P-MTAB-159605",
+        "type" : "Protocols",
+        "fileList" : null,
+        "linkList" : null,
+        "attributes" : [ {
+          "name" : "Name",
+          "value" : "P-MTAB-159605",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        }, {
+          "name" : "Type",
+          "value" : "nucleic acid labeling protocol",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ {
+            "name" : "Ontology",
+            "value" : "EFO"
+          }, {
+            "name" : "TermId",
+            "value" : "EFO_0003813"
+          } ]
+        }, {
+          "name" : "Description",
+          "value" : "Laveling was perfomed the Low Input Quick Amp Labeling kit one-color (Agilent Technologies) according to the manufacturer's protocol. Labeled probes were purified with RNeasy Mini Kit (Qiagen).",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        } ],
+        "sections" : [ ],
+        "files" : [ ],
+        "links" : [ ],
+        "extType" : "section"
+      }, {
+        "accNo" : "P-MTAB-159606",
+        "type" : "Protocols",
+        "fileList" : null,
+        "linkList" : null,
+        "attributes" : [ {
+          "name" : "Name",
+          "value" : "P-MTAB-159606",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        }, {
+          "name" : "Type",
+          "value" : "nucleic acid hybridization to array protocol",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ {
+            "name" : "Ontology",
+            "value" : "EFO"
+          }, {
+            "name" : "TermId",
+            "value" : "EFO_0003815"
+          } ]
+        }, {
+          "name" : "Description",
+          "value" : "Hybridization was performed by Gene Expression Hybridization Kit (Agilent Technologies) following the manufacture's protocol.",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        } ],
+        "sections" : [ ],
+        "files" : [ ],
+        "links" : [ ],
+        "extType" : "section"
+      }, {
+        "accNo" : "P-MTAB-159607",
+        "type" : "Protocols",
+        "fileList" : null,
+        "linkList" : null,
+        "attributes" : [ {
+          "name" : "Name",
+          "value" : "P-MTAB-159607",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        }, {
+          "name" : "Type",
+          "value" : "array scanning and feature extraction protocol",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ {
+            "name" : "Ontology",
+            "value" : "EFO"
+          }, {
+            "name" : "TermId",
+            "value" : "EFO_0003814"
+          } ]
+        }, {
+          "name" : "Description",
+          "value" : "Scanning was performed using an Agilent DNA Microarray Scanner (G2565BA, Agilent Technologies, Tokyo, Japan) with Agilent Scan Control Software. Signal intensities were extracted using Agilent Feature Extraction Software with default settings.",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        } ],
+        "sections" : [ ],
+        "files" : [ ],
+        "links" : [ ],
+        "extType" : "section"
+      }, {
+        "accNo" : "P-MTAB-159608",
+        "type" : "Protocols",
+        "fileList" : null,
+        "linkList" : null,
+        "attributes" : [ {
+          "name" : "Name",
+          "value" : "P-MTAB-159608",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        }, {
+          "name" : "Type",
+          "value" : "treatment protocol",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ {
+            "name" : "Ontology",
+            "value" : "EFO"
+          }, {
+            "name" : "TermId",
+            "value" : "EFO_0003969"
+          } ]
+        }, {
+          "name" : "Description",
+          "value" : "Seedlings were subjected to the following stress treatments for 24 h: 1. High light (HL): white light at 50 W m^-2 (250 μmol m^-2 s^-1). 2. Cold (Cold): 4°C in a growth chamber (MIR-154-PJ, PHCbi, Tokyo) under continuous white light at 6 W m^-2. 3. High light + Cold (HL + Cold): 4°C in the same growth chamber as Cold treatment, under continuous white light at 50 W m^-2. Each treatment was performed with three biological replicates.",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        } ],
+        "sections" : [ ],
+        "files" : [ ],
+        "links" : [ ],
+        "extType" : "section"
+      }, {
+        "accNo" : "P-MTAB-159609",
+        "type" : "Protocols",
+        "fileList" : null,
+        "linkList" : null,
+        "attributes" : [ {
+          "name" : "Name",
+          "value" : "P-MTAB-159609",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        }, {
+          "name" : "Type",
+          "value" : "normalization data transformation protocol",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ {
+            "name" : "Ontology",
+            "value" : "EFO"
+          }, {
+            "name" : "TermId",
+            "value" : "EFO_0003816"
+          } ]
+        }, {
+          "name" : "Description",
+          "value" : "The independent datasets were normalized with GeneSpring(Agilent Technologies). Filtering microarray data for quality control was carried out using the default settings of GeneSpring to remove “Compromised” and thus not Uniform spots, saturated spots, and population outliner.",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        } ],
+        "sections" : [ ],
+        "files" : [ ],
+        "links" : [ ],
+        "extType" : "section"
+      } ],
+      "extType" : "sectionsTable"
+    }, {
+      "accNo" : null,
+      "type" : "Author",
+      "fileList" : null,
+      "linkList" : null,
+      "attributes" : [ {
+        "name" : "Name",
+        "value" : "Natsuki Hayami",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "Email",
+        "value" : "natsukihayami@gmail.com",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "Role",
+        "value" : "submitter",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "affiliation",
+        "value" : "o1",
+        "reference" : true,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      } ],
+      "sections" : [ ],
+      "files" : [ ],
+      "links" : [ ],
+      "extType" : "section"
+    }, {
+      "accNo" : "o1",
+      "type" : "Organization",
+      "fileList" : null,
+      "linkList" : null,
+      "attributes" : [ {
+        "name" : "Name",
+        "value" : "United Graduate School of Agriculture, Gifu University",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "Address",
+        "value" : "Yangido 1-1, Gifu 501-1193, Japan",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      } ],
+      "sections" : [ ],
+      "files" : [ ],
+      "links" : [ ],
+      "extType" : "section"
+    }, {
+      "accNo" : "s-samples-factors-E-MTAB-16149",
+      "type" : "Samples",
+      "fileList" : null,
+      "linkList" : null,
+      "attributes" : [ {
+        "name" : "Sample count",
+        "value" : "12",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "Experimental Factors",
+        "value" : "new attribute",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ {
+          "name" : "TermName",
+          "value" : "new attribute"
+        } ]
+      } ],
+      "sections" : [ {
+        "accNo" : "exp_factor-E-MTAB-16149",
+        "type" : "Experimental Factors",
+        "fileList" : null,
+        "linkList" : null,
+        "attributes" : [ {
+          "name" : "New attribute",
+          "value" : "HL+Cold",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        }, {
+          "name" : "New attribute",
+          "value" : "Cold",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        }, {
+          "name" : "New attribute",
+          "value" : "Control",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        }, {
+          "name" : "New attribute",
+          "value" : "HL",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        } ],
+        "sections" : [ {
+          "sections" : [ {
+            "accNo" : "factors_0",
+            "type" : "Factors Table",
+            "fileList" : null,
+            "linkList" : null,
+            "attributes" : [ {
+              "name" : "new attribute",
+              "value" : "Cold",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            }, {
+              "name" : "No. of Samples",
+              "value" : "3",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ {
+                "name" : "search",
+                "value" : "\"US11033868_252116912172_S01_GE1_107_Sep09_1_3.txt\" OR \"US11033868_252116912173_S01_GE1_107_Sep09_1_4.txt\" OR \"US11033868_252116912174_S01_GE1_107_Sep09_1_1.txt\""
+              } ]
+            } ],
+            "sections" : [ ],
+            "files" : [ ],
+            "links" : [ ],
+            "extType" : "section"
+          }, {
+            "accNo" : "factors_1",
+            "type" : "Factors Table",
+            "fileList" : null,
+            "linkList" : null,
+            "attributes" : [ {
+              "name" : "new attribute",
+              "value" : "Control",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            }, {
+              "name" : "No. of Samples",
+              "value" : "3",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ {
+                "name" : "search",
+                "value" : "\"US11033868_252116912172_S01_GE1_107_Sep09_1_1.txt\" OR \"US11033868_252116912173_S01_GE1_107_Sep09_1_2.txt\" OR \"US11033868_252116912173_S01_GE1_107_Sep09_1_3.txt\""
+              } ]
+            } ],
+            "sections" : [ ],
+            "files" : [ ],
+            "links" : [ ],
+            "extType" : "section"
+          }, {
+            "accNo" : "factors_2",
+            "type" : "Factors Table",
+            "fileList" : null,
+            "linkList" : null,
+            "attributes" : [ {
+              "name" : "new attribute",
+              "value" : "HL",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            }, {
+              "name" : "No. of Samples",
+              "value" : "3",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ {
+                "name" : "search",
+                "value" : "\"US11033868_252116912172_S01_GE1_107_Sep09_1_2.txt\" OR \"US11033868_252116912174_S01_GE1_107_Sep09_1_3.txt\" OR \"US11033868_252116912174_S01_GE1_107_Sep09_1_4.txt\""
+              } ]
+            } ],
+            "sections" : [ ],
+            "files" : [ ],
+            "links" : [ ],
+            "extType" : "section"
+          }, {
+            "accNo" : "factors_3",
+            "type" : "Factors Table",
+            "fileList" : null,
+            "linkList" : null,
+            "attributes" : [ {
+              "name" : "new attribute",
+              "value" : "HL+Cold",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            }, {
+              "name" : "No. of Samples",
+              "value" : "3",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ {
+                "name" : "search",
+                "value" : "\"US11033868_252116912172_S01_GE1_107_Sep09_1_4.txt\" OR \"US11033868_252116912173_S01_GE1_107_Sep09_1_1.txt\" OR \"US11033868_252116912174_S01_GE1_107_Sep09_1_2.txt\""
+              } ]
+            } ],
+            "sections" : [ ],
+            "files" : [ ],
+            "links" : [ ],
+            "extType" : "section"
+          } ],
+          "extType" : "sectionsTable"
+        } ],
+        "files" : [ ],
+        "links" : [ ],
+        "extType" : "section"
+      }, {
+        "accNo" : "source_chars-E-MTAB-16149",
+        "type" : "Source Characteristics",
+        "fileList" : null,
+        "linkList" : null,
+        "attributes" : [ {
+          "name" : "Organism",
+          "value" : "Arabidopsis thaliana",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        }, {
+          "name" : "Cultivar",
+          "value" : "Col-0",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        }, {
+          "name" : "Age",
+          "value" : "10",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        }, {
+          "name" : "Organism part",
+          "value" : "seedling",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        }, {
+          "name" : "New attribute",
+          "value" : "HL+Cold",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        }, {
+          "name" : "New attribute",
+          "value" : "Cold",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        }, {
+          "name" : "New attribute",
+          "value" : "Control",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        }, {
+          "name" : "New attribute",
+          "value" : "HL",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        } ],
+        "sections" : [ {
+          "sections" : [ {
+            "accNo" : "source_0",
+            "type" : "Characteristics Table",
+            "fileList" : null,
+            "linkList" : null,
+            "attributes" : [ {
+              "name" : "new attribute",
+              "value" : "Cold",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            }, {
+              "name" : "No. of Samples",
+              "value" : "3",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ {
+                "name" : "search",
+                "value" : "\"US11033868_252116912172_S01_GE1_107_Sep09_1_3.txt\" OR \"US11033868_252116912173_S01_GE1_107_Sep09_1_4.txt\" OR \"US11033868_252116912174_S01_GE1_107_Sep09_1_1.txt\""
+              } ]
+            } ],
+            "sections" : [ ],
+            "files" : [ ],
+            "links" : [ ],
+            "extType" : "section"
+          }, {
+            "accNo" : "source_1",
+            "type" : "Characteristics Table",
+            "fileList" : null,
+            "linkList" : null,
+            "attributes" : [ {
+              "name" : "new attribute",
+              "value" : "Control",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            }, {
+              "name" : "No. of Samples",
+              "value" : "3",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ {
+                "name" : "search",
+                "value" : "\"US11033868_252116912172_S01_GE1_107_Sep09_1_1.txt\" OR \"US11033868_252116912173_S01_GE1_107_Sep09_1_2.txt\" OR \"US11033868_252116912173_S01_GE1_107_Sep09_1_3.txt\""
+              } ]
+            } ],
+            "sections" : [ ],
+            "files" : [ ],
+            "links" : [ ],
+            "extType" : "section"
+          }, {
+            "accNo" : "source_2",
+            "type" : "Characteristics Table",
+            "fileList" : null,
+            "linkList" : null,
+            "attributes" : [ {
+              "name" : "new attribute",
+              "value" : "HL",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            }, {
+              "name" : "No. of Samples",
+              "value" : "3",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ {
+                "name" : "search",
+                "value" : "\"US11033868_252116912172_S01_GE1_107_Sep09_1_2.txt\" OR \"US11033868_252116912174_S01_GE1_107_Sep09_1_3.txt\" OR \"US11033868_252116912174_S01_GE1_107_Sep09_1_4.txt\""
+              } ]
+            } ],
+            "sections" : [ ],
+            "files" : [ ],
+            "links" : [ ],
+            "extType" : "section"
+          }, {
+            "accNo" : "source_3",
+            "type" : "Characteristics Table",
+            "fileList" : null,
+            "linkList" : null,
+            "attributes" : [ {
+              "name" : "new attribute",
+              "value" : "HL+Cold",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            }, {
+              "name" : "No. of Samples",
+              "value" : "3",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ {
+                "name" : "search",
+                "value" : "\"US11033868_252116912172_S01_GE1_107_Sep09_1_4.txt\" OR \"US11033868_252116912173_S01_GE1_107_Sep09_1_1.txt\" OR \"US11033868_252116912174_S01_GE1_107_Sep09_1_2.txt\""
+              } ]
+            } ],
+            "sections" : [ ],
+            "files" : [ ],
+            "links" : [ ],
+            "extType" : "section"
+          } ],
+          "extType" : "sectionsTable"
+        } ],
+        "files" : [ ],
+        "links" : [ ],
+        "extType" : "section"
+      } ],
+      "files" : [ ],
+      "links" : [ ],
+      "extType" : "section"
+    }, {
+      "accNo" : "s-assays-data-E-MTAB-16149",
+      "type" : "Assays and Data",
+      "fileList" : null,
+      "linkList" : null,
+      "attributes" : [ {
+        "name" : "Assay count",
+        "value" : "12",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "Technology",
+        "value" : "Array assay",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "Assay by Molecule",
+        "value" : "RNA assay",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      } ],
+      "sections" : [ {
+        "accNo" : "raw-data",
+        "type" : "Raw Data",
+        "fileList" : null,
+        "linkList" : null,
+        "attributes" : [ ],
+        "sections" : [ ],
+        "files" : [ {
+          "files" : [ {
+            "fileName" : "US11033868_252116912172_S01_GE1_107_Sep09_1_3.txt",
+            "filePath" : "US11033868_252116912172_S01_GE1_107_Sep09_1_3.txt",
+            "relPath" : "Files/US11033868_252116912172_S01_GE1_107_Sep09_1_3.txt",
+            "fullPath" : "/nfs/ftp/public/databases/biostudies/E-MTAB-/149/E-MTAB-16149/Files/US11033868_252116912172_S01_GE1_107_Sep09_1_3.txt",
+            "md5" : "C7DD4E4F4124F809E969AB53466B03A7",
+            "attributes" : [ {
+              "name" : "Samples",
+              "value" : "Cold1",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            }, {
+              "name" : "Description",
+              "value" : "Raw data file",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            } ],
+            "extType" : "nfsFile",
+            "type" : "file",
+            "size" : 6814073
+          }, {
+            "fileName" : "US11033868_252116912173_S01_GE1_107_Sep09_1_4.txt",
+            "filePath" : "US11033868_252116912173_S01_GE1_107_Sep09_1_4.txt",
+            "relPath" : "Files/US11033868_252116912173_S01_GE1_107_Sep09_1_4.txt",
+            "fullPath" : "/nfs/ftp/public/databases/biostudies/E-MTAB-/149/E-MTAB-16149/Files/US11033868_252116912173_S01_GE1_107_Sep09_1_4.txt",
+            "md5" : "5AA41D9CDE2AE0E0E85044003438F9D2",
+            "attributes" : [ {
+              "name" : "Samples",
+              "value" : "Cold2",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            }, {
+              "name" : "Description",
+              "value" : "Raw data file",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            } ],
+            "extType" : "nfsFile",
+            "type" : "file",
+            "size" : 6815989
+          }, {
+            "fileName" : "US11033868_252116912174_S01_GE1_107_Sep09_1_1.txt",
+            "filePath" : "US11033868_252116912174_S01_GE1_107_Sep09_1_1.txt",
+            "relPath" : "Files/US11033868_252116912174_S01_GE1_107_Sep09_1_1.txt",
+            "fullPath" : "/nfs/ftp/public/databases/biostudies/E-MTAB-/149/E-MTAB-16149/Files/US11033868_252116912174_S01_GE1_107_Sep09_1_1.txt",
+            "md5" : "032740CFA6382E542C0A8B543D9E9FDE",
+            "attributes" : [ {
+              "name" : "Samples",
+              "value" : "Cold3",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            }, {
+              "name" : "Description",
+              "value" : "Raw data file",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            } ],
+            "extType" : "nfsFile",
+            "type" : "file",
+            "size" : 6812146
+          }, {
+            "fileName" : "US11033868_252116912172_S01_GE1_107_Sep09_1_1.txt",
+            "filePath" : "US11033868_252116912172_S01_GE1_107_Sep09_1_1.txt",
+            "relPath" : "Files/US11033868_252116912172_S01_GE1_107_Sep09_1_1.txt",
+            "fullPath" : "/nfs/ftp/public/databases/biostudies/E-MTAB-/149/E-MTAB-16149/Files/US11033868_252116912172_S01_GE1_107_Sep09_1_1.txt",
+            "md5" : "72F367BDF7CFA13FA3C6C062385C66EE",
+            "attributes" : [ {
+              "name" : "Samples",
+              "value" : "control1",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            }, {
+              "name" : "Description",
+              "value" : "Raw data file",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            } ],
+            "extType" : "nfsFile",
+            "type" : "file",
+            "size" : 6811788
+          }, {
+            "fileName" : "US11033868_252116912173_S01_GE1_107_Sep09_1_2.txt",
+            "filePath" : "US11033868_252116912173_S01_GE1_107_Sep09_1_2.txt",
+            "relPath" : "Files/US11033868_252116912173_S01_GE1_107_Sep09_1_2.txt",
+            "fullPath" : "/nfs/ftp/public/databases/biostudies/E-MTAB-/149/E-MTAB-16149/Files/US11033868_252116912173_S01_GE1_107_Sep09_1_2.txt",
+            "md5" : "81280912A3C35B88DDD2C07DEE28E6B5",
+            "attributes" : [ {
+              "name" : "Samples",
+              "value" : "control2",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            }, {
+              "name" : "Description",
+              "value" : "Raw data file",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            } ],
+            "extType" : "nfsFile",
+            "type" : "file",
+            "size" : 6814491
+          }, {
+            "fileName" : "US11033868_252116912173_S01_GE1_107_Sep09_1_3.txt",
+            "filePath" : "US11033868_252116912173_S01_GE1_107_Sep09_1_3.txt",
+            "relPath" : "Files/US11033868_252116912173_S01_GE1_107_Sep09_1_3.txt",
+            "fullPath" : "/nfs/ftp/public/databases/biostudies/E-MTAB-/149/E-MTAB-16149/Files/US11033868_252116912173_S01_GE1_107_Sep09_1_3.txt",
+            "md5" : "7224B8D651D91B3807C8D4EF2B178E68",
+            "attributes" : [ {
+              "name" : "Samples",
+              "value" : "control3",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            }, {
+              "name" : "Description",
+              "value" : "Raw data file",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            } ],
+            "extType" : "nfsFile",
+            "type" : "file",
+            "size" : 6812943
+          }, {
+            "fileName" : "US11033868_252116912172_S01_GE1_107_Sep09_1_2.txt",
+            "filePath" : "US11033868_252116912172_S01_GE1_107_Sep09_1_2.txt",
+            "relPath" : "Files/US11033868_252116912172_S01_GE1_107_Sep09_1_2.txt",
+            "fullPath" : "/nfs/ftp/public/databases/biostudies/E-MTAB-/149/E-MTAB-16149/Files/US11033868_252116912172_S01_GE1_107_Sep09_1_2.txt",
+            "md5" : "CF09414B950C312FDF1BE8F93D618ED4",
+            "attributes" : [ {
+              "name" : "Samples",
+              "value" : "HL1",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            }, {
+              "name" : "Description",
+              "value" : "Raw data file",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            } ],
+            "extType" : "nfsFile",
+            "type" : "file",
+            "size" : 6814020
+          }, {
+            "fileName" : "US11033868_252116912174_S01_GE1_107_Sep09_1_3.txt",
+            "filePath" : "US11033868_252116912174_S01_GE1_107_Sep09_1_3.txt",
+            "relPath" : "Files/US11033868_252116912174_S01_GE1_107_Sep09_1_3.txt",
+            "fullPath" : "/nfs/ftp/public/databases/biostudies/E-MTAB-/149/E-MTAB-16149/Files/US11033868_252116912174_S01_GE1_107_Sep09_1_3.txt",
+            "md5" : "E256241085C880C6AB8EEF756AD26D21",
+            "attributes" : [ {
+              "name" : "Samples",
+              "value" : "HL2",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            }, {
+              "name" : "Description",
+              "value" : "Raw data file",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            } ],
+            "extType" : "nfsFile",
+            "type" : "file",
+            "size" : 6815424
+          }, {
+            "fileName" : "US11033868_252116912174_S01_GE1_107_Sep09_1_4.txt",
+            "filePath" : "US11033868_252116912174_S01_GE1_107_Sep09_1_4.txt",
+            "relPath" : "Files/US11033868_252116912174_S01_GE1_107_Sep09_1_4.txt",
+            "fullPath" : "/nfs/ftp/public/databases/biostudies/E-MTAB-/149/E-MTAB-16149/Files/US11033868_252116912174_S01_GE1_107_Sep09_1_4.txt",
+            "md5" : "055DD34F7EE9CA1ED89928DD3635440B",
+            "attributes" : [ {
+              "name" : "Samples",
+              "value" : "HL3",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            }, {
+              "name" : "Description",
+              "value" : "Raw data file",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            } ],
+            "extType" : "nfsFile",
+            "type" : "file",
+            "size" : 6817765
+          }, {
+            "fileName" : "US11033868_252116912172_S01_GE1_107_Sep09_1_4.txt",
+            "filePath" : "US11033868_252116912172_S01_GE1_107_Sep09_1_4.txt",
+            "relPath" : "Files/US11033868_252116912172_S01_GE1_107_Sep09_1_4.txt",
+            "fullPath" : "/nfs/ftp/public/databases/biostudies/E-MTAB-/149/E-MTAB-16149/Files/US11033868_252116912172_S01_GE1_107_Sep09_1_4.txt",
+            "md5" : "F8658A854631F71344EBC8CAF742D2FB",
+            "attributes" : [ {
+              "name" : "Samples",
+              "value" : "HLcold1",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            }, {
+              "name" : "Description",
+              "value" : "Raw data file",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            } ],
+            "extType" : "nfsFile",
+            "type" : "file",
+            "size" : 6817722
+          }, {
+            "fileName" : "US11033868_252116912173_S01_GE1_107_Sep09_1_1.txt",
+            "filePath" : "US11033868_252116912173_S01_GE1_107_Sep09_1_1.txt",
+            "relPath" : "Files/US11033868_252116912173_S01_GE1_107_Sep09_1_1.txt",
+            "fullPath" : "/nfs/ftp/public/databases/biostudies/E-MTAB-/149/E-MTAB-16149/Files/US11033868_252116912173_S01_GE1_107_Sep09_1_1.txt",
+            "md5" : "166C369F77BFE9FE72C582D1B4AA2369",
+            "attributes" : [ {
+              "name" : "Samples",
+              "value" : "HLcold2",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            }, {
+              "name" : "Description",
+              "value" : "Raw data file",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            } ],
+            "extType" : "nfsFile",
+            "type" : "file",
+            "size" : 6809372
+          }, {
+            "fileName" : "US11033868_252116912174_S01_GE1_107_Sep09_1_2.txt",
+            "filePath" : "US11033868_252116912174_S01_GE1_107_Sep09_1_2.txt",
+            "relPath" : "Files/US11033868_252116912174_S01_GE1_107_Sep09_1_2.txt",
+            "fullPath" : "/nfs/ftp/public/databases/biostudies/E-MTAB-/149/E-MTAB-16149/Files/US11033868_252116912174_S01_GE1_107_Sep09_1_2.txt",
+            "md5" : "71E2C0488F135FE55DC302CE5659FCD2",
+            "attributes" : [ {
+              "name" : "Samples",
+              "value" : "HLcold3",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            }, {
+              "name" : "Description",
+              "value" : "Raw data file",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            } ],
+            "extType" : "nfsFile",
+            "type" : "file",
+            "size" : 6811815
+          } ],
+          "extType" : "filesTable"
+        } ],
+        "links" : [ ],
+        "extType" : "section"
+      }, {
+        "accNo" : "processed-data",
+        "type" : "Processed Data",
+        "fileList" : null,
+        "linkList" : null,
+        "attributes" : [ ],
+        "sections" : [ ],
+        "files" : [ {
+          "files" : [ {
+            "fileName" : "normalized_data.txt",
+            "filePath" : "normalized_data.txt",
+            "relPath" : "Files/normalized_data.txt",
+            "fullPath" : "/nfs/ftp/public/databases/biostudies/E-MTAB-/149/E-MTAB-16149/Files/normalized_data.txt",
+            "md5" : "2606B26DFB8B4816F3675752F68FF36E",
+            "attributes" : [ {
+              "name" : "Description",
+              "value" : "Processed Data",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            } ],
+            "extType" : "nfsFile",
+            "type" : "file",
+            "size" : 5793163
+          } ],
+          "extType" : "filesTable"
+        } ],
+        "links" : [ ],
+        "extType" : "section"
+      }, {
+        "accNo" : "mt-E-MTAB-16149",
+        "type" : "MAGE-TAB Files",
+        "fileList" : null,
+        "linkList" : null,
+        "attributes" : [ ],
+        "sections" : [ ],
+        "files" : [ {
+          "files" : [ {
+            "fileName" : "E-MTAB-16149.idf.txt",
+            "filePath" : "E-MTAB-16149.idf.txt",
+            "relPath" : "Files/E-MTAB-16149.idf.txt",
+            "fullPath" : "/nfs/ftp/public/databases/biostudies/E-MTAB-/149/E-MTAB-16149/Files/E-MTAB-16149.idf.txt",
+            "md5" : "3217CF185F40A3A3EED9CC15ED345A4C",
+            "attributes" : [ {
+              "name" : "Type",
+              "value" : "IDF File",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            }, {
+              "name" : "Format",
+              "value" : "tab-delimited text",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            }, {
+              "name" : "Description",
+              "value" : "Investigation Design Format (IDF)",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            } ],
+            "extType" : "nfsFile",
+            "type" : "file",
+            "size" : 4447
+          }, {
+            "fileName" : "E-MTAB-16149.sdrf.txt",
+            "filePath" : "E-MTAB-16149.sdrf.txt",
+            "relPath" : "Files/E-MTAB-16149.sdrf.txt",
+            "fullPath" : "/nfs/ftp/public/databases/biostudies/E-MTAB-/149/E-MTAB-16149/Files/E-MTAB-16149.sdrf.txt",
+            "md5" : "2D9C45EB9578DE976CEFABE3A0700711",
+            "attributes" : [ {
+              "name" : "Type",
+              "value" : "SDRF File",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            }, {
+              "name" : "Format",
+              "value" : "tab-delimited text",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            }, {
+              "name" : "Description",
+              "value" : "Sample and Data Relationship Format (SDRF)",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            } ],
+            "extType" : "nfsFile",
+            "type" : "file",
+            "size" : 5026
+          } ],
+          "extType" : "filesTable"
+        } ],
+        "links" : [ ],
+        "extType" : "section"
+      }, {
+        "accNo" : "ad-E-MTAB-16149",
+        "type" : "Array Designs",
+        "fileList" : null,
+        "linkList" : null,
+        "attributes" : [ ],
+        "sections" : [ ],
+        "files" : [ ],
+        "links" : [ {
+          "links" : [ {
+            "url" : "A-MEXP-1711",
+            "attributes" : [ {
+              "name" : "Type",
+              "value" : "Array Design",
+              "reference" : false,
+              "nameAttrs" : [ ],
+              "valueAttrs" : [ ]
+            } ],
+            "extType" : "link"
+          } ],
+          "extType" : "linksTable"
+        } ],
+        "extType" : "section"
+      } ],
+      "files" : [ ],
+      "links" : [ ],
+      "extType" : "section"
+    }, {
+      "accNo" : "score-E-MTAB-16149",
+      "type" : "MIAME Score",
+      "fileList" : null,
+      "linkList" : null,
+      "attributes" : [ {
+        "name" : "Platforms",
+        "value" : "-",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "Protocols",
+        "value" : "*",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "Variables",
+        "value" : "*",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "Processed",
+        "value" : "*",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "Raw",
+        "value" : "*",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      } ],
+      "sections" : [ ],
+      "files" : [ ],
+      "links" : [ ],
+      "extType" : "section"
+    } ],
+    "files" : [ ],
+    "links" : [ ],
+    "extType" : "section"
+  },
+  "attributes" : [ ],
+  "tags" : [ ],
+  "collections" : [ {
+    "accNo" : "ArrayExpress"
+  } ],
+  "stats" : "/stats/submission/E-MTAB-16149",
+  "accessTags" : [ {
+    "name" : "ArrayExpress"
+  }, {
+    "name" : "natsukihayami@gmail.com"
+  }, {
+    "name" : "Public"
+  } ],
+  "pageTabFiles" : [ {
+    "fileName" : "E-MTAB-16149.json",
+    "filePath" : "E-MTAB-16149.json",
+    "relPath" : "E-MTAB-16149.json",
+    "fullPath" : "/nfs/ftp/public/databases/biostudies/E-MTAB-/149/E-MTAB-16149/E-MTAB-16149.json",
+    "md5" : "222AC68C163AC0EF8B8B991ACC8E67EE",
+    "attributes" : [ ],
+    "extType" : "nfsFile",
+    "type" : "file",
+    "size" : 20462
+  }, {
+    "fileName" : "E-MTAB-16149.tsv",
+    "filePath" : "E-MTAB-16149.tsv",
+    "relPath" : "E-MTAB-16149.tsv",
+    "fullPath" : "/nfs/ftp/public/databases/biostudies/E-MTAB-/149/E-MTAB-16149/E-MTAB-16149.tsv",
+    "md5" : "91D2F3330658521AE1ECF33AFE072CE5",
+    "attributes" : [ ],
+    "extType" : "nfsFile",
+    "type" : "file",
+    "size" : 7545
+  } ],
+  "storageMode" : "NFS"
+}

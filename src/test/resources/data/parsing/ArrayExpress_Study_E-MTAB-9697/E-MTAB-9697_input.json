@@ -1,0 +1,1053 @@
+{
+  "accNo": "E-MTAB-9697",
+  "version": 2,
+  "schemaVersion": "1.0",
+  "owner": "rupeshdash@ils.res.in",
+  "submitter": "biostudies-dev@ebi.ac.uk",
+  "title": "RRBP1 rewires Cisplatin resistance in Oral Squamous Cell Carcinoma by regulating YAP-1",
+  "doi": null,
+  "method": "FILE",
+  "relPath": "E-MTAB-/697/E-MTAB-9697",
+  "rootPath": "E-MTAB-9697",
+  "released": true,
+  "secretKey": "a54e54a9-8e11-4493-9653-852f4ad5d391",
+  "releaseTime": "2020-12-31T00:00:00Z",
+  "submissionTime": "2022-03-14T12:46:17.556Z",
+  "modificationTime": "2022-03-14T12:46:17.556Z",
+  "creationTime": "2022-03-14T12:46:17.556Z",
+  "section": {
+    "accNo": "s-E-MTAB-9697",
+    "type": "Study",
+    "fileList": null,
+    "linkList": null,
+    "attributes": [
+      {
+        "name": "Title",
+        "value": "RRBP1 rewires Cisplatin resistance in Oral Squamous Cell Carcinoma by regulating YAP-1",
+        "reference": false,
+        "nameAttrs": [],
+        "valueAttrs": []
+      },
+      {
+        "name": "Study type",
+        "value": "Cell line - High-throughput sequencing",
+        "reference": false,
+        "nameAttrs": [],
+        "valueAttrs": []
+      },
+      {
+        "name": "Study type",
+        "value": "RNA-seq of coding RNA",
+        "reference": false,
+        "nameAttrs": [],
+        "valueAttrs": [
+          {
+            "name": "Ontology",
+            "value": "EFO"
+          },
+          {
+            "name": "TermId",
+            "value": "EFO_0003738"
+          }
+        ]
+      },
+      {
+        "name": "Organism",
+        "value": "Homo sapiens",
+        "reference": false,
+        "nameAttrs": [],
+        "valueAttrs": []
+      },
+      {
+        "name": "Description",
+        "value": "The RNA-seq library preparation was performed on H357 CisS at 0 month,H357 CisR at 4 months, and H357 CisR at 8 months whereas CisR represent Cisplatin drug resistance and CisS denote sensitive to Cisplatin.  Additional, we also performed gene specific knockdown on H357CisR 8 months RRPB1 Sh. In experiment, We have added two independent biological replicates of each samples to understand the role of  causative factor for  cisplatin resistance at transcriptomic level. Total RNA isolated from above mentions experiment and  2 μg of  RNA was used to prepared library.  The mRNA was isolated through magnetic beads using mRNA isolation kit (PolyA mRNA isolation Module, NEB) followed by RNA-seq library preparation using mRNA library preparation kit (NEB) strictly following the vendor recommended protocol. After library preparation concentration of libraries was estimated using qubit 2.0 (Invitrogen) and the recommended fragmentation sizes were confirmed by Tapestation (Agilent).",
+        "reference": false,
+        "nameAttrs": [],
+        "valueAttrs": []
+      }
+    ],
+    "sections": [
+      {
+        "sections": [
+          {
+            "accNo": "P-MTAB-102273",
+            "type": "Protocols",
+            "fileList": null,
+            "linkList": null,
+            "attributes": [
+              {
+                "name": "Name",
+                "value": "P-MTAB-102273",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": []
+              },
+              {
+                "name": "Type",
+                "value": "nucleic acid sequencing protocol",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": [
+                  {
+                    "name": "Ontology",
+                    "value": "EFO"
+                  },
+                  {
+                    "name": "TermId",
+                    "value": "EFO_0004170"
+                  }
+                ]
+              },
+              {
+                "name": "Description",
+                "value": "After library preparation concentration of libraries were estimated using Qubit 2.0 (Invitrogen) and the recommended fragmentation sizes were confirmed by Tapestation (Agilent) and sequenced using Illumina NextSeq 550.",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": []
+              },
+              {
+                "name": "Hardware",
+                "value": "NextSeq 550",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": []
+              }
+            ],
+            "sections": [],
+            "files": [],
+            "links": [],
+            "extType": "section"
+          },
+          {
+            "accNo": "P-MTAB-102272",
+            "type": "Protocols",
+            "fileList": null,
+            "linkList": null,
+            "attributes": [
+              {
+                "name": "Name",
+                "value": "P-MTAB-102272",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": []
+              },
+              {
+                "name": "Type",
+                "value": "nucleic acid library construction protocol",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": [
+                  {
+                    "name": "Ontology",
+                    "value": "EFO"
+                  },
+                  {
+                    "name": "TermId",
+                    "value": "EFO_0004184"
+                  }
+                ]
+              },
+              {
+                "name": "Description",
+                "value": "For RNA-seq library preparation 2 μg of total RNA was used to isolate mRNA through magnetic beads using mRNA isolation kit (PolyA mRNA isolation Module, NEB) followed by RNA-seq library preparation using mRNA library preparation kit (NEB) strictly following the vendor recommended protocol.",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": []
+              },
+              {
+                "name": "Hardware",
+                "value": null,
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": []
+              }
+            ],
+            "sections": [],
+            "files": [],
+            "links": [],
+            "extType": "section"
+          },
+          {
+            "accNo": "P-MTAB-102271",
+            "type": "Protocols",
+            "fileList": null,
+            "linkList": null,
+            "attributes": [
+              {
+                "name": "Name",
+                "value": "P-MTAB-102271",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": []
+              },
+              {
+                "name": "Type",
+                "value": "nucleic acid extraction protocol",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": [
+                  {
+                    "name": "Ontology",
+                    "value": "EFO"
+                  },
+                  {
+                    "name": "TermId",
+                    "value": "EFO_0002944"
+                  }
+                ]
+              },
+              {
+                "name": "Description",
+                "value": "The cells preserved in LBP lysis buffer were first taken out from -80°C and thawed by placing the plates/tubes on ice. Total RNA was isolated using NucleoSpin RNA Plus kit (Macherey-Nagel) according to manufacturer’s protocol. RNA concentration was estimated by Nanodrop (Thermo) and then 2ug of total RNA was used to prepare library.",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": []
+              },
+              {
+                "name": "Hardware",
+                "value": null,
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": []
+              }
+            ],
+            "sections": [],
+            "files": [],
+            "links": [],
+            "extType": "section"
+          },
+          {
+            "accNo": "P-MTAB-102270",
+            "type": "Protocols",
+            "fileList": null,
+            "linkList": null,
+            "attributes": [
+              {
+                "name": "Name",
+                "value": "P-MTAB-102270",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": []
+              },
+              {
+                "name": "Type",
+                "value": "sample collection protocol",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": [
+                  {
+                    "name": "Ontology",
+                    "value": "EFO"
+                  },
+                  {
+                    "name": "TermId",
+                    "value": "EFO_0005518"
+                  }
+                ]
+              },
+              {
+                "name": "Description",
+                "value": "The RNA-seq library preparation was performed for H357 CisR Nt Sh and H357 CisR CMTM6 shRNA treated with vehicle control (UT) and cisplatin (10 μM) (CisT) for 24 h.",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": []
+              },
+              {
+                "name": "Hardware",
+                "value": null,
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": []
+              }
+            ],
+            "sections": [],
+            "files": [],
+            "links": [],
+            "extType": "section"
+          }
+        ],
+        "extType": "sectionsTable"
+      },
+      {
+        "accNo": null,
+        "type": "Author",
+        "fileList": null,
+        "linkList": null,
+        "attributes": [
+          {
+            "name": "Name",
+            "value": "Rupesh Dash",
+            "reference": false,
+            "nameAttrs": [],
+            "valueAttrs": []
+          },
+          {
+            "name": "Email",
+            "value": "rupeshdash@ils.res.in",
+            "reference": false,
+            "nameAttrs": [],
+            "valueAttrs": []
+          },
+          {
+            "name": "Role",
+            "value": "submitter",
+            "reference": false,
+            "nameAttrs": [],
+            "valueAttrs": []
+          },
+          {
+            "name": "affiliation",
+            "value": "o1",
+            "reference": true,
+            "nameAttrs": [],
+            "valueAttrs": []
+          }
+        ],
+        "sections": [],
+        "files": [],
+        "links": [],
+        "extType": "section"
+      },
+      {
+        "accNo": "o1",
+        "type": "Organization",
+        "fileList": null,
+        "linkList": null,
+        "attributes": [
+          {
+            "name": "Name",
+            "value": "Institute of Life Sciences, Bhubaneswar",
+            "reference": false,
+            "nameAttrs": [],
+            "valueAttrs": []
+          },
+          {
+            "name": "Address",
+            "value": "Nalco Nagar Road, Chandrasekharpur",
+            "reference": false,
+            "nameAttrs": [],
+            "valueAttrs": []
+          }
+        ],
+        "sections": [],
+        "files": [],
+        "links": [],
+        "extType": "section"
+      },
+      {
+        "accNo": "s-samples-factors-E-MTAB-9697",
+        "type": "Samples",
+        "fileList": null,
+        "linkList": null,
+        "attributes": [
+          {
+            "name": "Sample count",
+            "value": "8",
+            "reference": false,
+            "nameAttrs": [],
+            "valueAttrs": []
+          },
+          {
+            "name": "Experimental Designs",
+            "value": "case control design",
+            "reference": false,
+            "nameAttrs": [],
+            "valueAttrs": [
+              {
+                "name": "TermId",
+                "value": "EFO:0001427"
+              }
+            ]
+          },
+          {
+            "name": "Experimental Designs",
+            "value": "compound treatment design",
+            "reference": false,
+            "nameAttrs": [],
+            "valueAttrs": [
+              {
+                "name": "TermId",
+                "value": "EFO_0001755"
+              }
+            ]
+          },
+          {
+            "name": "Experimental Factors",
+            "value": "phenotype",
+            "reference": false,
+            "nameAttrs": [],
+            "valueAttrs": [
+              {
+                "name": "TermName",
+                "value": "phenotype"
+              }
+            ]
+          },
+          {
+            "name": "Experimental Factors",
+            "value": "RNA interference",
+            "reference": false,
+            "nameAttrs": [],
+            "valueAttrs": [
+              {
+                "name": "TermName",
+                "value": "RNA interference"
+              }
+            ]
+          },
+          {
+            "name": "Experimental Factors",
+            "value": "time",
+            "reference": false,
+            "nameAttrs": [],
+            "valueAttrs": [
+              {
+                "name": "TermName",
+                "value": "time"
+              }
+            ]
+          }
+        ],
+        "sections": [
+          {
+            "accNo": "exp_factor-E-MTAB-9697",
+            "type": "Experimental Factors",
+            "fileList": null,
+            "linkList": null,
+            "attributes": [
+              {
+                "name": "Phenotype",
+                "value": "resistant to cisplatin",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": []
+              },
+              {
+                "name": "Phenotype",
+                "value": "sensitive to cisplatin",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": []
+              },
+              {
+                "name": "Rna interference",
+                "value": "RRBP1 knockdown by siRNA",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": []
+              },
+              {
+                "name": "Rna interference",
+                "value": "scrambled siRNA",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": []
+              },
+              {
+                "name": "Rna interference",
+                "value": "none",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": []
+              },
+              {
+                "name": "Time",
+                "value": "4 month",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": []
+              },
+              {
+                "name": "Time",
+                "value": "8 month",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": []
+              },
+              {
+                "name": "Time",
+                "value": "0 month",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": []
+              }
+            ],
+            "sections": [
+              {
+                "sections": [
+                  {
+                    "accNo": "factors_0",
+                    "type": "Factors Table",
+                    "fileList": null,
+                    "linkList": null,
+                    "attributes": [
+                      {
+                        "name": "phenotype",
+                        "value": "sensitive to cisplatin",
+                        "reference": false,
+                        "nameAttrs": [],
+                        "valueAttrs": []
+                      },
+                      {
+                        "name": "RNA interference",
+                        "value": "none",
+                        "reference": false,
+                        "nameAttrs": [],
+                        "valueAttrs": []
+                      },
+                      {
+                        "name": "time",
+                        "value": "0 month",
+                        "reference": false,
+                        "nameAttrs": [],
+                        "valueAttrs": []
+                      },
+                      {
+                        "name": "No. of Samples",
+                        "value": "2",
+                        "reference": false,
+                        "nameAttrs": [],
+                        "valueAttrs": [
+                          {
+                            "name": "url",
+                            "value": "https://www.ebi.ac.uk/ena/browser/view/ERS5229718-ERS5229719"
+                          }
+                        ]
+                      }
+                    ],
+                    "sections": [],
+                    "files": [],
+                    "links": [],
+                    "extType": "section"
+                  },
+                  {
+                    "accNo": "factors_1",
+                    "type": "Factors Table",
+                    "fileList": null,
+                    "linkList": null,
+                    "attributes": [
+                      {
+                        "name": "phenotype",
+                        "value": "resistant to cisplatin",
+                        "reference": false,
+                        "nameAttrs": [],
+                        "valueAttrs": []
+                      },
+                      {
+                        "name": "RNA interference",
+                        "value": "scrambled siRNA",
+                        "reference": false,
+                        "nameAttrs": [],
+                        "valueAttrs": []
+                      },
+                      {
+                        "name": "time",
+                        "value": "4 month",
+                        "reference": false,
+                        "nameAttrs": [],
+                        "valueAttrs": []
+                      },
+                      {
+                        "name": "No. of Samples",
+                        "value": "2",
+                        "reference": false,
+                        "nameAttrs": [],
+                        "valueAttrs": [
+                          {
+                            "name": "url",
+                            "value": "https://www.ebi.ac.uk/ena/browser/view/ERS5229720-ERS5229721"
+                          }
+                        ]
+                      }
+                    ],
+                    "sections": [],
+                    "files": [],
+                    "links": [],
+                    "extType": "section"
+                  },
+                  {
+                    "accNo": "factors_2",
+                    "type": "Factors Table",
+                    "fileList": null,
+                    "linkList": null,
+                    "attributes": [
+                      {
+                        "name": "phenotype",
+                        "value": "resistant to cisplatin",
+                        "reference": false,
+                        "nameAttrs": [],
+                        "valueAttrs": []
+                      },
+                      {
+                        "name": "RNA interference",
+                        "value": "scrambled siRNA",
+                        "reference": false,
+                        "nameAttrs": [],
+                        "valueAttrs": []
+                      },
+                      {
+                        "name": "time",
+                        "value": "8 month",
+                        "reference": false,
+                        "nameAttrs": [],
+                        "valueAttrs": []
+                      },
+                      {
+                        "name": "No. of Samples",
+                        "value": "2",
+                        "reference": false,
+                        "nameAttrs": [],
+                        "valueAttrs": [
+                          {
+                            "name": "url",
+                            "value": "https://www.ebi.ac.uk/ena/browser/view/ERS5229722-ERS5229723"
+                          }
+                        ]
+                      }
+                    ],
+                    "sections": [],
+                    "files": [],
+                    "links": [],
+                    "extType": "section"
+                  },
+                  {
+                    "accNo": "factors_3",
+                    "type": "Factors Table",
+                    "fileList": null,
+                    "linkList": null,
+                    "attributes": [
+                      {
+                        "name": "phenotype",
+                        "value": "resistant to cisplatin",
+                        "reference": false,
+                        "nameAttrs": [],
+                        "valueAttrs": []
+                      },
+                      {
+                        "name": "RNA interference",
+                        "value": "RRBP1 knockdown by siRNA",
+                        "reference": false,
+                        "nameAttrs": [],
+                        "valueAttrs": []
+                      },
+                      {
+                        "name": "time",
+                        "value": "8 month",
+                        "reference": false,
+                        "nameAttrs": [],
+                        "valueAttrs": []
+                      },
+                      {
+                        "name": "No. of Samples",
+                        "value": "2",
+                        "reference": false,
+                        "nameAttrs": [],
+                        "valueAttrs": [
+                          {
+                            "name": "url",
+                            "value": "https://www.ebi.ac.uk/ena/browser/view/ERS5229724-ERS5229725"
+                          }
+                        ]
+                      }
+                    ],
+                    "sections": [],
+                    "files": [],
+                    "links": [],
+                    "extType": "section"
+                  }
+                ],
+                "extType": "sectionsTable"
+              }
+            ],
+            "files": [],
+            "links": [],
+            "extType": "section"
+          },
+          {
+            "accNo": "source_chars-E-MTAB-9697",
+            "type": "Source Characteristics",
+            "fileList": null,
+            "linkList": null,
+            "attributes": [
+              {
+                "name": "Organism",
+                "value": "Homo sapiens",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": []
+              },
+              {
+                "name": "Organism part",
+                "value": "tongue",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": []
+              },
+              {
+                "name": "Cell line",
+                "value": "H357",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": []
+              },
+              {
+                "name": "Disease",
+                "value": "tongue squamous cell carcinoma",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": []
+              },
+              {
+                "name": "Genotype",
+                "value": "wild type genotype",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": []
+              },
+              {
+                "name": "Phenotype",
+                "value": "resistant to cisplatin",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": []
+              },
+              {
+                "name": "Phenotype",
+                "value": "sensitive to cisplatin",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": []
+              }
+            ],
+            "sections": [
+              {
+                "sections": [
+                  {
+                    "accNo": "source_0",
+                    "type": "Characteristics Table",
+                    "fileList": null,
+                    "linkList": null,
+                    "attributes": [
+                      {
+                        "name": "phenotype",
+                        "value": "sensitive to cisplatin",
+                        "reference": false,
+                        "nameAttrs": [],
+                        "valueAttrs": []
+                      },
+                      {
+                        "name": "No. of Samples",
+                        "value": "2",
+                        "reference": false,
+                        "nameAttrs": [],
+                        "valueAttrs": [
+                          {
+                            "name": "url",
+                            "value": "https://www.ebi.ac.uk/ena/browser/view/ERS5229718-ERS5229719"
+                          }
+                        ]
+                      }
+                    ],
+                    "sections": [],
+                    "files": [],
+                    "links": [],
+                    "extType": "section"
+                  },
+                  {
+                    "accNo": "source_1",
+                    "type": "Characteristics Table",
+                    "fileList": null,
+                    "linkList": null,
+                    "attributes": [
+                      {
+                        "name": "phenotype",
+                        "value": "resistant to cisplatin",
+                        "reference": false,
+                        "nameAttrs": [],
+                        "valueAttrs": []
+                      },
+                      {
+                        "name": "No. of Samples",
+                        "value": "6",
+                        "reference": false,
+                        "nameAttrs": [],
+                        "valueAttrs": [
+                          {
+                            "name": "url",
+                            "value": "https://www.ebi.ac.uk/ena/browser/view/ERS5229720-ERS5229725"
+                          }
+                        ]
+                      }
+                    ],
+                    "sections": [],
+                    "files": [],
+                    "links": [],
+                    "extType": "section"
+                  }
+                ],
+                "extType": "sectionsTable"
+              }
+            ],
+            "files": [],
+            "links": [],
+            "extType": "section"
+          }
+        ],
+        "files": [],
+        "links": [],
+        "extType": "section"
+      },
+      {
+        "accNo": "s-assays-data-E-MTAB-9697",
+        "type": "Assays and Data",
+        "fileList": null,
+        "linkList": null,
+        "attributes": [
+          {
+            "name": "Assay count",
+            "value": "8",
+            "reference": false,
+            "nameAttrs": [],
+            "valueAttrs": []
+          },
+          {
+            "name": "Technology",
+            "value": "Sequencing assay",
+            "reference": false,
+            "nameAttrs": [],
+            "valueAttrs": []
+          },
+          {
+            "name": "Assay by Molecule",
+            "value": "RNA assay",
+            "reference": false,
+            "nameAttrs": [],
+            "valueAttrs": []
+          }
+        ],
+        "sections": [
+          {
+            "accNo": "mt-E-MTAB-9697",
+            "type": "MAGE-TAB Files",
+            "fileList": null,
+            "linkList": null,
+            "attributes": [],
+            "sections": [],
+            "files": [
+              {
+                "files": [
+                  {
+                    "fileName": "E-MTAB-9697.idf.txt",
+                    "filePath": "E-MTAB-9697.idf.txt",
+                    "relPath": "Files/E-MTAB-9697.idf.txt",
+                    "fireId": "a69310df5f4046fb8d1199e7525f2dfa",
+                    "firePath": "E-MTAB-/697/E-MTAB-9697/Files/E-MTAB-9697.idf.txt",
+                    "published": true,
+                    "attributes": [
+                      {
+                        "name": "Type",
+                        "value": "IDF File",
+                        "reference": false,
+                        "nameAttrs": [],
+                        "valueAttrs": []
+                      },
+                      {
+                        "name": "Format",
+                        "value": "tab-delimited text",
+                        "reference": false,
+                        "nameAttrs": [],
+                        "valueAttrs": []
+                      },
+                      {
+                        "name": "Description",
+                        "value": "Investigation Design Format (IDF)",
+                        "reference": false,
+                        "nameAttrs": [],
+                        "valueAttrs": []
+                      }
+                    ],
+                    "extType": "fireFile",
+                    "type": "file",
+                    "md5": "2625E4E47B7BD843FEB96AB332181A72",
+                    "size": 4329
+                  },
+                  {
+                    "fileName": "E-MTAB-9697.sdrf.txt",
+                    "filePath": "E-MTAB-9697.sdrf.txt",
+                    "relPath": "Files/E-MTAB-9697.sdrf.txt",
+                    "fireId": "91077720fd6a4db8a6f6d4d52179ccc2",
+                    "firePath": "E-MTAB-/697/E-MTAB-9697/Files/E-MTAB-9697.sdrf.txt",
+                    "published": true,
+                    "attributes": [
+                      {
+                        "name": "Type",
+                        "value": "SDRF File",
+                        "reference": false,
+                        "nameAttrs": [],
+                        "valueAttrs": []
+                      },
+                      {
+                        "name": "Format",
+                        "value": "tab-delimited text",
+                        "reference": false,
+                        "nameAttrs": [],
+                        "valueAttrs": []
+                      },
+                      {
+                        "name": "Description",
+                        "value": "Sample and Data Relationship Format (SDRF)",
+                        "reference": false,
+                        "nameAttrs": [],
+                        "valueAttrs": []
+                      }
+                    ],
+                    "extType": "fireFile",
+                    "type": "file",
+                    "md5": "596495DAC5905DC8EBAD082C428159A2",
+                    "size": 11869
+                  }
+                ],
+                "extType": "filesTable"
+              }
+            ],
+            "links": [],
+            "extType": "section"
+          }
+        ],
+        "files": [],
+        "links": [],
+        "extType": "section"
+      },
+      {
+        "accNo": "score-E-MTAB-9697",
+        "type": "MINSEQE Score",
+        "fileList": null,
+        "linkList": null,
+        "attributes": [
+          {
+            "name": "Exp. Design",
+            "value": "*",
+            "reference": false,
+            "nameAttrs": [],
+            "valueAttrs": []
+          },
+          {
+            "name": "Raw",
+            "value": "*",
+            "reference": false,
+            "nameAttrs": [],
+            "valueAttrs": []
+          },
+          {
+            "name": "Protocols",
+            "value": "*",
+            "reference": false,
+            "nameAttrs": [],
+            "valueAttrs": []
+          },
+          {
+            "name": "Processed",
+            "value": "-",
+            "reference": false,
+            "nameAttrs": [],
+            "valueAttrs": []
+          },
+          {
+            "name": "Variables",
+            "value": "*",
+            "reference": false,
+            "nameAttrs": [],
+            "valueAttrs": []
+          }
+        ],
+        "sections": [],
+        "files": [],
+        "links": [],
+        "extType": "section"
+      }
+    ],
+    "files": [],
+    "links": [
+      {
+        "links": [
+          {
+            "url": "ERP124622",
+            "attributes": [
+              {
+                "name": "Type",
+                "value": "ENA",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": []
+              }
+            ],
+            "extType": "link"
+          }
+        ],
+        "extType": "linksTable"
+      }
+    ],
+    "extType": "section"
+  },
+  "attributes": [],
+  "tags": [],
+  "collections": [
+    {
+      "accNo": "ArrayExpress"
+    }
+  ],
+  "stats": "/stats/submission/E-MTAB-9697",
+  "accessTags": [
+    {
+      "name": "ArrayExpress"
+    },
+    {
+      "name": "rupeshdash@ils.res.in"
+    },
+    {
+      "name": "Public"
+    }
+  ],
+  "pageTabFiles": [
+    {
+      "fileName": "E-MTAB-9697.json",
+      "filePath": "E-MTAB-9697.json",
+      "relPath": "E-MTAB-9697.json",
+      "fireId": "d87ccb3e41874f0e9b204c4f76492237",
+      "firePath": "E-MTAB-/697/E-MTAB-9697/E-MTAB-9697.json",
+      "published": true,
+      "attributes": [],
+      "extType": "fireFile",
+      "type": "file",
+      "md5": "52A533616E3277155462F633C6CB9AC4",
+      "size": 13828
+    },
+    {
+      "fileName": "E-MTAB-9697.xml",
+      "filePath": "E-MTAB-9697.xml",
+      "relPath": "E-MTAB-9697.xml",
+      "fireId": "aec62daf6f154ce99ef4979a25e6c49b",
+      "firePath": "E-MTAB-/697/E-MTAB-9697/E-MTAB-9697.xml",
+      "published": true,
+      "attributes": [],
+      "extType": "fireFile",
+      "type": "file",
+      "md5": "F614C0DDEC0619126A6A3F9FFA0999CE",
+      "size": 20612
+    },
+    {
+      "fileName": "E-MTAB-9697.tsv",
+      "filePath": "E-MTAB-9697.tsv",
+      "relPath": "E-MTAB-9697.tsv",
+      "fireId": "9e0cc57923aa4e4784bca2c8b4a9c8d6",
+      "firePath": "E-MTAB-/697/E-MTAB-9697/E-MTAB-9697.tsv",
+      "published": true,
+      "attributes": [],
+      "extType": "fireFile",
+      "type": "file",
+      "md5": "89F81D195B505E4C877E9CCA362F6A9D",
+      "size": 5338
+    }
+  ],
+  "storageMode": "FIRE"
+}

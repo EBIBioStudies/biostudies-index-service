@@ -1,0 +1,54 @@
+{
+  "accno": "BioImages",
+  "attributes": [
+    {
+      "name": "AccNoTemplate",
+      "value": "!{S-BIAD}"
+    },
+    {
+      "name": "Title",
+      "value": "BioImages"
+    },
+    {
+      "name": "ReleaseDate",
+      "value": "2019-06-17"
+    },
+    {
+      "name": "RootPath",
+      "value": "BioImages"
+    },
+    {
+      "name": "AttachTo",
+      "value": "BioImages"
+    }
+  ],
+  "section": {
+    "type": "Project",
+    "attributes": [
+      {
+        "name": "Title",
+        "value": "BioImages"
+      },
+      {
+        "name": "Description",
+        "value": "Project containing all the imaging studies in BioStudies"
+      }
+    ],
+    "files": [
+      [
+        {
+          "path": "u/BioImages/logo.png",
+          "size": 5306,
+          "attributes": [
+            {
+              "name": "Type",
+              "value": "logo"
+            }
+          ],
+          "type": "file"
+        }
+      ]
+    ]
+  },
+  "type": "submission"
+}

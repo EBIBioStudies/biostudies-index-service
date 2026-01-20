@@ -1,0 +1,810 @@
+{
+  "accNo" : "S-BIAD385",
+  "version" : 2,
+  "schemaVersion" : "1.0",
+  "owner" : "velasque@ebi.ac.uk",
+  "submitter" : "velasque@ebi.ac.uk",
+  "title" : "Focused Ion Beam-Scanning Electron Microscopy of the Caenorhabditis elegans Dauer Larval Anterior Sensilla",
+  "doi" : null,
+  "method" : "FILE",
+  "relPath" : "S-BIAD/385/S-BIAD385",
+  "rootPath" : null,
+  "released" : true,
+  "secretKey" : "5e187af8-b2e2-4f7b-a90a-4c29211fae1a",
+  "releaseTime" : "2025-05-09T00:00:00Z",
+  "submissionTime" : "2025-05-13T12:58:59.015Z",
+  "modificationTime" : "2025-05-13T12:58:59.015Z",
+  "creationTime" : "2025-05-09T14:02:12.315Z",
+  "section" : {
+    "accNo" : null,
+    "type" : "Study",
+    "fileList" : null,
+    "linkList" : null,
+    "attributes" : [ {
+      "name" : "Description",
+      "value" : "Using focused ion beam-scanning electron microscopy (FIB-SEM), we volumetrically reconstructed the anterior sensory apparatus of Caenorhabditis elegans dauer larvae with unprecedented precision. (Background: At the end of the first larval stage, the nematode developing in harsh environmental conditions is able to choose an alternative developmental path called the dauer diapause.) To get a near-to-native isotropic high-resolution 3D-insight into the anterior sensory apparatus of C. elegans dauer larvae we used high-pressure freezing followed by freeze substitution, minimal resin embedding, and FIB-SEM acquisition.  In the paper we provide a detailed description of neurons, focusing on structural details that were unknown or unresolved by previously published studies: (1) dauer-specific branches of the IL2 sensory neurons project into the periphery of anterior sensilla and motor or putative sensory neurons at the sub-lateral cords. (2) ciliated endings of URX sensory neurons are supported by both ILso and AMso socket cells near the amphid openings. (3) variability in amphid sensory dendrites among dauers. (4) somatic RIP interneurons maintain their projection into the pharyngeal nervous system. Our results support the notion that dauer larvae structurally expand their sensory system to facilitate searching for more favorable environments.",
+      "reference" : false,
+      "nameAttrs" : [ ],
+      "valueAttrs" : [ ]
+    }, {
+      "name" : "Keyword",
+      "value" : "Caenorhabditis elegans",
+      "reference" : false,
+      "nameAttrs" : [ ],
+      "valueAttrs" : [ ]
+    }, {
+      "name" : "Keyword",
+      "value" : "Sensilla",
+      "reference" : false,
+      "nameAttrs" : [ ],
+      "valueAttrs" : [ ]
+    }, {
+      "name" : "Keyword",
+      "value" : "FIB-SEM",
+      "reference" : false,
+      "nameAttrs" : [ ],
+      "valueAttrs" : [ ]
+    }, {
+      "name" : "Keyword",
+      "value" : "Electron Microscopy",
+      "reference" : false,
+      "nameAttrs" : [ ],
+      "valueAttrs" : [ ]
+    }, {
+      "name" : "Keyword",
+      "value" : "Dauer larvae",
+      "reference" : false,
+      "nameAttrs" : [ ],
+      "valueAttrs" : [ ]
+    }, {
+      "name" : "Keyword",
+      "value" : "neuroanatomy",
+      "reference" : false,
+      "nameAttrs" : [ ],
+      "valueAttrs" : [ ]
+    }, {
+      "name" : "Keyword",
+      "value" : "Test",
+      "reference" : false,
+      "nameAttrs" : [ ],
+      "valueAttrs" : [ ]
+    }, {
+      "name" : "Acknowledgements",
+      "value" : "We thank D. Bunsen, C. Gehrig-Höhn, B. Trost, J. Kattan, and N. Schieber for excellent technical support and helpful hints regarding sample preparation. We thank the electron microscopy core unit at the Max Planck Institute of Experimental Medicine for access to their Crossbeam 540.",
+      "reference" : false,
+      "nameAttrs" : [ ],
+      "valueAttrs" : [ ]
+    }, {
+      "name" : "License",
+      "value" : "CC0",
+      "reference" : false,
+      "nameAttrs" : [ ],
+      "valueAttrs" : [ {
+        "name" : "URL",
+        "value" : "https://creativecommons.org/publicdomain/zero/1.0/legalcode"
+      } ]
+    }, {
+      "name" : "Funding statement",
+      "value" : "This study was supported by a Ph.D. grant from the Studienstiftung des Deutschen Volkes (to SM), by a Messreise grant of the Deutsche Gesellschaft für Elektronenmikroskopie (to SB), and by the Canadian Institutes of Health Research Foundation Scheme 154274 and International Human Frontier Science Program Organization RGP0051/2014 (to MZ). Isabel Kemmer and Bugra Özdemir receive funding from the European Union under Grant Agreement Number 101130986 (EVOLVE).",
+      "reference" : false,
+      "nameAttrs" : [ ],
+      "valueAttrs" : [ ]
+    } ],
+    "sections" : [ {
+      "accNo" : null,
+      "type" : "author",
+      "fileList" : null,
+      "linkList" : null,
+      "attributes" : [ {
+        "name" : "Name",
+        "value" : "Anna Steyer",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "E-mail",
+        "value" : "anna.steyer@embl.de",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "Role",
+        "value" : "data acquisition, submitter",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "ORCID",
+        "value" : "0000-0002-4814-7517",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "affiliation",
+        "value" : "o1",
+        "reference" : true,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      } ],
+      "sections" : [ ],
+      "files" : [ ],
+      "links" : [ ],
+      "extType" : "section"
+    }, {
+      "accNo" : null,
+      "type" : "author",
+      "fileList" : null,
+      "linkList" : null,
+      "attributes" : [ {
+        "name" : "Name",
+        "value" : "Sebastian Britz",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "E-mail",
+        "value" : "sebastian.britz@uni-wuerzburg.de",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "Role",
+        "value" : "first author",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "ORCID",
+        "value" : "0000-0002-7566-005X",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "affiliation",
+        "value" : "o2",
+        "reference" : true,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      } ],
+      "sections" : [ ],
+      "files" : [ ],
+      "links" : [ ],
+      "extType" : "section"
+    }, {
+      "accNo" : null,
+      "type" : "author",
+      "fileList" : null,
+      "linkList" : null,
+      "attributes" : [ {
+        "name" : "Name",
+        "value" : "Sebastian Matthias1 Markert",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "E-mail",
+        "value" : "sebastian.markert@htwsaar.de",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "Role",
+        "value" : "experiment performer",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "ORCID",
+        "value" : "0000-0001-9069-156X",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "affiliation",
+        "value" : "o3",
+        "reference" : true,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      } ],
+      "sections" : [ ],
+      "files" : [ ],
+      "links" : [ ],
+      "extType" : "section"
+    }, {
+      "accNo" : null,
+      "type" : "author",
+      "fileList" : null,
+      "linkList" : null,
+      "attributes" : [ {
+        "name" : "Name",
+        "value" : "Yannick Schwab",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "E-mail",
+        "value" : "yannick.schwab@embl.de",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "Role",
+        "value" : "data aquisition",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "ORCID",
+        "value" : "0000-0001-8027-1836",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "affiliation",
+        "value" : "o1",
+        "reference" : true,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      } ],
+      "sections" : [ ],
+      "files" : [ ],
+      "links" : [ ],
+      "extType" : "section"
+    }, {
+      "accNo" : null,
+      "type" : "author",
+      "fileList" : null,
+      "linkList" : null,
+      "attributes" : [ {
+        "name" : "Name",
+        "value" : "Christian Stigloher",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "E-mail",
+        "value" : "christian.stigloher@uni-wuerzburg.de",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "Role",
+        "value" : "principal investigator",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "ORCID",
+        "value" : "0000-0001-6941-2669",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "affiliation",
+        "value" : "o2",
+        "reference" : true,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      } ],
+      "sections" : [ ],
+      "files" : [ ],
+      "links" : [ ],
+      "extType" : "section"
+    }, {
+      "accNo" : null,
+      "type" : "author",
+      "fileList" : null,
+      "linkList" : null,
+      "attributes" : [ {
+        "name" : "Name",
+        "value" : "Isabel Kemmer",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "E-mail",
+        "value" : "isabel.kemmer@eurobioimaging.eu",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "Role",
+        "value" : "data steward",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "ORCID",
+        "value" : "0000-0002-8799-4671",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "affiliation",
+        "value" : "o4",
+        "reference" : true,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      } ],
+      "sections" : [ ],
+      "files" : [ ],
+      "links" : [ ],
+      "extType" : "section"
+    }, {
+      "accNo" : null,
+      "type" : "author",
+      "fileList" : null,
+      "linkList" : null,
+      "attributes" : [ {
+        "name" : "Name",
+        "value" : "Bugra Özdemir",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "E-mail",
+        "value" : "bugra.özdemir@eurobioimaging.eu",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "Role",
+        "value" : "data conversion",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "ORCID",
+        "value" : "0000-0001-9823-0581",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "affiliation",
+        "value" : "o4",
+        "reference" : true,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      } ],
+      "sections" : [ ],
+      "files" : [ ],
+      "links" : [ ],
+      "extType" : "section"
+    }, {
+      "accNo" : "o1",
+      "type" : "organization",
+      "fileList" : null,
+      "linkList" : null,
+      "attributes" : [ {
+        "name" : "Name",
+        "value" : "European Molecular Biology Laboratory, EMBL Heidelberg",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "Address",
+        "value" : "Meyerhofstraße 1, 69117 Heidelberg, Germany",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      } ],
+      "sections" : [ ],
+      "files" : [ ],
+      "links" : [ ],
+      "extType" : "section"
+    }, {
+      "accNo" : "o2",
+      "type" : "organization",
+      "fileList" : null,
+      "linkList" : null,
+      "attributes" : [ {
+        "name" : "Name",
+        "value" : "University of Würzburg",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "Address",
+        "value" : "Sanderring 2, 97070 Würzburg, Germany",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      } ],
+      "sections" : [ ],
+      "files" : [ ],
+      "links" : [ ],
+      "extType" : "section"
+    }, {
+      "accNo" : "o3",
+      "type" : "organization",
+      "fileList" : null,
+      "linkList" : null,
+      "attributes" : [ {
+        "name" : "Name",
+        "value" : "HTW Saar",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "Address",
+        "value" : "Goebenstraße 40, 66117 Saarbrücken, Germany",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      } ],
+      "sections" : [ ],
+      "files" : [ ],
+      "links" : [ ],
+      "extType" : "section"
+    }, {
+      "accNo" : "o4",
+      "type" : "organization",
+      "fileList" : null,
+      "linkList" : null,
+      "attributes" : [ {
+        "name" : "Name",
+        "value" : "Euro-BioImaging ERIC",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "Address",
+        "value" : "Euro-BioImaging Bio-Hub, EMBL, Meyerhofstrasse 1, 69117 Heidelberg.",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      } ],
+      "sections" : [ ],
+      "files" : [ ],
+      "links" : [ ],
+      "extType" : "section"
+    }, {
+      "accNo" : null,
+      "type" : "Publication",
+      "fileList" : null,
+      "linkList" : null,
+      "attributes" : [ {
+        "name" : "Title",
+        "value" : "Structural Analysis of the <i>Caenorhabditis elegans</i> Dauer Larval Anterior Sensilla by Focused Ion Beam-Scanning Electron Microscopy.",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "Year",
+        "value" : "2021",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "Authors",
+        "value" : "Britz S, Markert SM, Witvliet D, Steyer AM, Tröger S, Mulcahy B, Kollmannsberger P, Schwab Y, Zhen M, Stigloher C.",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "DOI",
+        "value" : "10.3389/fnana.2021.7325",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "PMC ID",
+        "value" : "34819841",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      } ],
+      "sections" : [ ],
+      "files" : [ ],
+      "links" : [ ],
+      "extType" : "section"
+    }, {
+      "accNo" : "Biosample-1",
+      "type" : "Biosample",
+      "fileList" : null,
+      "linkList" : null,
+      "attributes" : [ {
+        "name" : "Title",
+        "value" : "Biosample",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "Biological entity",
+        "value" : "Caenorhabditis elegans N2 Bristol, Dauer and L1 hermaphrodite larvae, Anterior Sensilla",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "Intrinsic variable",
+        "value" : "Larvea stage (Dauer or L1)",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      } ],
+      "sections" : [ {
+        "accNo" : "Organism-1",
+        "type" : "Organism",
+        "fileList" : null,
+        "linkList" : null,
+        "attributes" : [ {
+          "name" : "Scientific name",
+          "value" : "Caenorhabditis elegans",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        }, {
+          "name" : "Common name",
+          "value" : null,
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        }, {
+          "name" : "NCBI taxon ID",
+          "value" : "NCBI:txid6239",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        } ],
+        "sections" : [ ],
+        "files" : [ ],
+        "links" : [ ],
+        "extType" : "section"
+      } ],
+      "files" : [ ],
+      "links" : [ ],
+      "extType" : "section"
+    }, {
+      "accNo" : "Specimen-1",
+      "type" : "Specimen",
+      "fileList" : null,
+      "linkList" : null,
+      "attributes" : [ {
+        "name" : "Title",
+        "value" : "Specimen",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "Sample Preparation Protocol",
+        "value" : "The dauer and L1 larvae that survived SDS were washed off with M9 buffer, which was then exchanged with 20% bovine serum albumin in M9 buffer. Worms were pipetted into high pressure freezing planchettes with 100 μm recesses and high pressure frozen with an EM HPM100 machine (Leica) (Schieber et al., 2017). Worms were freeze substituted according to our published protocol in an EM AFS2 machine (Leica), infiltrated with Durcupan resin, and then minimal resin embedded (Schieber et al., 2017).",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "Growth Protocol",
+        "value" : "Caenorhabditis elegans N2 Bristol worms were maintained on 35 mm agar plates with nematode growth medium lite (Sun and Lambie, 1997) and Escherichia coli OP50 lawn at 20°C (Brenner, 1974). Crowded populations where OP50 bacteria were still present were chunked onto 94 mm agar plates seeded with OP50 and cultured for seven days at 20°C. Most worms developed into the dauer stage due to overcrowding and starvation. Worms were washed off from plates with M9 buffer and treated with 1% SDS solution for 10 min (Cassada and Russell, 1975). Five washing steps with M9 buffer were applied. To remove the liquid, worms were centrifuged at 2,000 g first. Then, worms were pipetted at the edge of a fresh unseeded agar plate for recovery and incubated for about 1–2 h. Dauer and some L1 larvae survived the SDS treatment and spread out over the plate. The agar areas with dead worms were removed with a spatula.",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      } ],
+      "sections" : [ ],
+      "files" : [ ],
+      "links" : [ ],
+      "extType" : "section"
+    }, {
+      "accNo" : "Image Acquisition-1",
+      "type" : "Image Acquisition",
+      "fileList" : null,
+      "linkList" : null,
+      "attributes" : [ {
+        "name" : "Title",
+        "value" : "Acquisition",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "Imaging Instrument",
+        "value" : "FIB-SEM Auriga 60 or Crossbeam 540 (Carl Zeiss Company) using ATLAS 3D software (part of Atlas5 from Fibics)",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "Image Acquisition Parameters",
+        "value" : "Minimal resin embedded worms were further prepared for FIB-SEM imaging. The data sets were acquired by milling about 8 nm layers with the ion beam and imaging the block face with 5 nm pixel size. The data sets were acquired at 1.5 kV with the energy-selective back-scattered electron (EsB) detector (grid voltage 1,100 V), at 700 pA. The anterior ends of three dauer larvae (DauerE1, DauerE2, DauerE3) were imaged in transversal sections starting from posterior in the worm body orienting at specific anatomical landmarks of the worm. For DauerE1, a larger body segment, starting at the amphid commissures was imaged. The anterior end of an L1 larva (L1E4) was imaged longitudinally. For stage identification, we imaged a transverse section in the middle of the body of each worm to reveal cuticle, alae, and intestine morphology using the FIB-SEM.",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      } ],
+      "sections" : [ {
+        "accNo" : "Imaging Method-1",
+        "type" : "Imaging Method",
+        "fileList" : null,
+        "linkList" : null,
+        "attributes" : [ {
+          "name" : "Ontology Value",
+          "value" : "focussed ion beam scanning electron microscopy (FIB-SEM)",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        }, {
+          "name" : "Ontology Name",
+          "value" : "Biological Imaging Methods Ontology (FBbi)",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        }, {
+          "name" : "Ontology Term ID",
+          "value" : "http://purl.obolibrary.org/obo/FBbi_00050000",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        } ],
+        "sections" : [ ],
+        "files" : [ ],
+        "links" : [ ],
+        "extType" : "section"
+      } ],
+      "files" : [ ],
+      "links" : [ ],
+      "extType" : "section"
+    }, {
+      "accNo" : "Image-Analysis-1",
+      "type" : "Image Analysis",
+      "fileList" : null,
+      "linkList" : null,
+      "attributes" : [ {
+        "name" : "Title",
+        "value" : "Analysis",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "Image Analysis Overview",
+        "value" : "# Alignement: Images were aligned using TrakEM2 in Fiji (Cardona et al., 2012; Schindelin et al., 2012). The contrast was inverted in regards to the original FIB-SEM images. Image stack orientation regarding rotation (transversal), flipping, and stack recursion (longitudinal) as well as cropping, brightness, and contrast were adjusted either with TrakEM2 or Fiji. The image stack of L1E4 was transformed first from a longitudinal to a transverse stack using the reslicing function of Fiji and then scaled to the respective pixel size by enlargement using a bilinear interpolation. In DauerE2 and DauerE3, the VSNR denoising tool was used to reduce stationary artifacts (Fehrenbach et al., 2012). L1E4 was denoised applying a Gaussian blur (sigma 1) in Fiji. The full volumes of DauerE1 and DauerE3 were prepared and exported with TrakEM2 and then uploaded to CATMAID (Saalfeld et al., 2009; Cardona et al., 2012). # Image conversion: Conversion was performed by using EuBI-Bridge version 0.0.5b2 following OME-Zarr specification version 0.4. For more information on EuBI-Bridge visit the [GitHub repository](https://github.com/Euro-BioImaging/EuBI-Bridge/tree/main) as well as the [documentation site](https://euro-bioimaging.github.io/EuBI-Bridge/#). The OME-Zarrs produced by the conversion have the following metadata: | Property                    | Value                                                  | |-----------------------------|--------------------------------------------------------| | Chunk size in pixels        | 1, 1, 256, 256, 256                                    | | Compression                 | Blosc (default configuration from zarr-python v2.18.3) | | Dimension order             | t, c, z, y, x                                          | | Number of resolution levels | 6                                                      | | Scale factor per dimension  | 1, 1, 2, 2, 2                                          |",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      } ],
+      "sections" : [ ],
+      "files" : [ ],
+      "links" : [ ],
+      "extType" : "section"
+    }, {
+      "accNo" : "Study Component-1",
+      "type" : "Study Component",
+      "fileList" : {
+        "fileName" : "Test1_file_list_submission - Sheet1",
+        "filesUrl" : "/submissions/extended/S-BIAD385/referencedFiles/Test1_file_list_submission%20-%20Sheet1",
+        "file" : "/nfs/public/rw/biostudies/databases/beta/request-files/S-BIAD385/2/Test1_file_list_submission - Sheet12838346211459618122.json",
+        "pageTabFiles" : [ {
+          "fileName" : "Test1_file_list_submission - Sheet1.json",
+          "filePath" : "Test1_file_list_submission - Sheet1.json",
+          "relPath" : "Files/Test1_file_list_submission - Sheet1.json",
+          "fullPath" : "/nfs/ftp/public/databases/biostudies/.beta/S-BIAD/385/S-BIAD385/Files/Test1_file_list_submission - Sheet1.json",
+          "md5" : "025CA9057C5BBD10127ACC091110420E",
+          "attributes" : [ ],
+          "extType" : "nfsFile",
+          "type" : "file",
+          "size" : 577
+        }, {
+          "fileName" : "Test1_file_list_submission - Sheet1.tsv",
+          "filePath" : "Test1_file_list_submission - Sheet1.tsv",
+          "relPath" : "Files/Test1_file_list_submission - Sheet1.tsv",
+          "fullPath" : "/nfs/ftp/public/databases/biostudies/.beta/S-BIAD/385/S-BIAD385/Files/Test1_file_list_submission - Sheet1.tsv",
+          "md5" : "C2581A5056339E9CBCB404B3B5DA506A",
+          "attributes" : [ ],
+          "extType" : "nfsFile",
+          "type" : "file",
+          "size" : 93
+        } ]
+      },
+      "linkList" : null,
+      "attributes" : [ {
+        "name" : "Name",
+        "value" : "FIB-SEM imaging of C. elegans Dauer and L1 larvae",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      }, {
+        "name" : "Description",
+        "value" : null,
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      } ],
+      "sections" : [ {
+        "accNo" : null,
+        "type" : "Associations",
+        "fileList" : null,
+        "linkList" : null,
+        "attributes" : [ {
+          "name" : "Biosample",
+          "value" : "Biosample",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        }, {
+          "name" : "Specimen",
+          "value" : "Specimen",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        }, {
+          "name" : "Image acquisition",
+          "value" : "Acquisition",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        }, {
+          "name" : "Image Analysis",
+          "value" : "Analysis",
+          "reference" : false,
+          "nameAttrs" : [ ],
+          "valueAttrs" : [ ]
+        } ],
+        "sections" : [ ],
+        "files" : [ ],
+        "links" : [ ],
+        "extType" : "section"
+      } ],
+      "files" : [ ],
+      "links" : [ ],
+      "extType" : "section"
+    } ],
+    "files" : [ ],
+    "links" : [ {
+      "url" : "https://zenodo.org/records/5525883",
+      "attributes" : [ {
+        "name" : "Description",
+        "value" : "Raw data",
+        "reference" : false,
+        "nameAttrs" : [ ],
+        "valueAttrs" : [ ]
+      } ],
+      "extType" : "link"
+    } ],
+    "extType" : "section"
+  },
+  "attributes" : [ {
+    "name" : "Template",
+    "value" : "BioImages.v4",
+    "reference" : false,
+    "nameAttrs" : [ ],
+    "valueAttrs" : [ ]
+  }, {
+    "name" : "REMBI_PageTab Conversion Script Version",
+    "value" : "1.0.0",
+    "reference" : false,
+    "nameAttrs" : [ ],
+    "valueAttrs" : [ ]
+  } ],
+  "tags" : [ ],
+  "collections" : [ {
+    "accNo" : "BioImages"
+  }, {
+    "accNo" : "BioImages"
+  } ],
+  "stats" : "/stats/submission/S-BIAD385",
+  "accessTags" : [ {
+    "name" : "BioImages"
+  }, {
+    "name" : "BioImages"
+  }, {
+    "name" : "velasque@ebi.ac.uk"
+  }, {
+    "name" : "Public"
+  } ],
+  "pageTabFiles" : [ {
+    "fileName" : "S-BIAD385.json",
+    "filePath" : "S-BIAD385.json",
+    "relPath" : "S-BIAD385.json",
+    "fullPath" : "/nfs/ftp/public/databases/biostudies/.beta/S-BIAD/385/S-BIAD385/S-BIAD385.json",
+    "md5" : "D7D1DC51C497A0EE78166C2D71E86663",
+    "attributes" : [ ],
+    "extType" : "nfsFile",
+    "type" : "file",
+    "size" : 15917
+  }, {
+    "fileName" : "S-BIAD385.tsv",
+    "filePath" : "S-BIAD385.tsv",
+    "relPath" : "S-BIAD385.tsv",
+    "fullPath" : "/nfs/ftp/public/databases/biostudies/.beta/S-BIAD/385/S-BIAD385/S-BIAD385.tsv",
+    "md5" : "37698119405E7D989C18A1363DE351FD",
+    "attributes" : [ ],
+    "extType" : "nfsFile",
+    "type" : "file",
+    "size" : 9782
+  } ],
+  "storageMode" : "NFS"
+}

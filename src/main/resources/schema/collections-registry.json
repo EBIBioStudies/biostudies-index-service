@@ -1,0 +1,855 @@
+[
+  {
+    "collectionName": "idr",
+    "properties": [
+      {
+        "name": "facet.idr.study_type",
+        "title": "Study Type",
+        "fieldType": "facet"
+      }
+    ]
+  },
+  {
+    "collectionName": "hecatos",
+    "properties": [
+      {
+        "name": "facet.hecatos.organ",
+        "title": "Organ",
+        "fieldType": "facet"
+      },
+      {
+        "name": "facet.hecatos.technology",
+        "title": "Assay Technology Type",
+        "fieldType": "facet"
+      },
+      {
+        "name": "facet.hecatos.data_type",
+        "title": "Data Type",
+        "fieldType": "facet"
+      },
+      {
+        "name": "facet.hecatos.compound",
+        "title": "Compound",
+        "fieldType": "facet"
+      },
+      {
+        "name": "facet.hecatos.raw_or_processed",
+        "title": "Raw/Processed",
+        "fieldType": "facet"
+      }
+    ]
+  },
+  {
+    "collectionName": "arrayexpress",
+    "properties": [
+      {
+        "name": "array",
+        "title": "Array",
+        "fieldType": "untokenized_string",
+        "analyzer": "AttributeFieldAnalyzer"
+      },
+      {
+        "name": "experimental_factor",
+        "title": "Experimental Factor",
+        "jsonPaths": [
+          "$..subsections[?(@.type==\"Experimental Factors\")]..attributes..name",
+          "$..sections[?(@.type==\"Experimental Factors\")]..attributes..name"
+        ],
+        "fieldType": "tokenized_string"
+      },
+      {
+        "name": "experimental_factor_value",
+        "title": "Experimental Factor Value",
+        "jsonPaths": [
+          "$..subsections[?(@.type==\"Experimental Factors\")]..attributes..value",
+          "$..sections[?(@.type==\"Experimental Factors\")]..attributes..value"
+        ],
+        "fieldType": "tokenized_string"
+      },
+      {
+        "name": "source_characteristics",
+        "title": "Source Characteristics",
+        "jsonPaths": [
+          "$..subsections[?(@.type==\"Source Characteristics\")]..attributes..name",
+          "$..sections[?(@.type==\"Source Characteristics\")]..attributes..name"
+        ],
+        "fieldType": "tokenized_string"
+      },
+      {
+        "name": "source_characteristics_value",
+        "title": "Source Characteristics Value",
+        "jsonPaths": [
+          "$..subsections[?(@.type==\"Source Characteristics\")]..attributes..value",
+          "$..sections[?(@.type==\"Source Characteristics\")]..attributes..value"
+        ],
+        "fieldType": "tokenized_string"
+      },
+      {
+        "name": "minseqe_score",
+        "title": "MINSEQE Score",
+        "fieldType": "long",
+        "multiValued": false,
+        "jsonPaths": [
+          "$..subsections[?(@.type==\"MINSEQE Score\")]..attributes[?(@.value==\"*\")]",
+          "$..sections[?(@.type==\"MINSEQE Score\")]..attributes[?(@.value==\"*\")]"
+        ],
+        "parser": "NodeCountingParser",
+        "sortable": true
+      },
+      {
+        "name": "miame_score",
+        "title": "MIAME Score",
+        "fieldType": "long",
+        "multiValued": false,
+        "jsonPaths": [
+          "$..subsections[?(@.type==\"MIAME Score\")]..attributes[?(@.value==\"*\")]",
+          "$..sections[?(@.type==\"MIAME Score\")]..attributes[?(@.value==\"*\")]"
+        ],
+        "parser": "NodeCountingParser",
+        "sortable": true
+      },
+      {
+        "name": "study_type",
+        "title": "Study type",
+        "fieldType": "tokenized_string"
+      },
+      {
+        "name": "experimental_design",
+        "title": "Experimental Design",
+        "jsonPaths": [
+          "$..subsections[?(@.type==\"Samples\")].attributes[?(@.name==\"Experimental Designs\")].value",
+          "$..sections[?(@.type==\"Samples\")].attributes[?(@.name==\"Experimental Designs\")].value"
+        ],
+        "fieldType": "tokenized_string"
+      },
+      {
+        "name": "organism",
+        "title": "Organism",
+        "fieldType": "tokenized_string"
+      },
+      {
+        "name": "technology",
+        "title": "Technology",
+        "jsonPaths": [
+          "$..subsections[?(@.type==\"Assays and Data\")].attributes[?(@.name==\"Technology\")].value",
+          "$..sections[?(@.type==\"Assays and Data\")].attributes[?(@.name==\"Technology\")].value"
+        ],
+        "fieldType": "tokenized_string"
+      },
+      {
+        "name": "assay_by_molecule",
+        "title": "Assay by Molecule",
+        "jsonPaths": [
+          "$..subsections[?(@.type==\"Assays and Data\")].attributes[?(@.name==\"Assay by Molecule\")].value",
+          "$..sections[?(@.type==\"Assays and Data\")].attributes[?(@.name==\"Assay by Molecule\")].value"
+        ],
+        "fieldType": "tokenized_string",
+        "naVisible": true
+      },
+      {
+        "name": "raw",
+        "title": "Raw Data Available",
+        "fieldType": "tokenized_string",
+        "multiValued": false,
+        "jsonPaths": [
+          "$..subsections[?(@.type==\"MinSeq Score\")]..attributes[?(@.name==\"Raw\" && @.value=='*')].concat(\"true\")",
+          "$..sections[?(@.type==\"MinSeq Score\")]..attributes[?(@.name==\"Raw\" && @.value=='*')].concat(\"true\")"
+        ],
+        "sortable": true
+      },
+      {
+        "name": "processed",
+        "title": "Processed Data Available",
+        "fieldType": "tokenized_string",
+        "multiValued": false,
+        "jsonPaths": [
+          "$..subsections[?(@.type==\"MinSeq Score\")]..attributes[?(@.name==\"Processed\" && @.value=='*')].concat(\"true\")",
+          "$..sections[?(@.type==\"MinSeq Score\")]..attributes[?(@.name==\"Processed\" && @.value=='*')].concat(\"true\")"
+        ],
+        "sortable": true
+      },
+      {
+        "name": "gxa",
+        "title": "In Expression Atlas",
+        "fieldType": "tokenized_string",
+        "multiValued": false,
+        "jsonPaths": [
+          "$..links.*[?(@.url)].attributes[?(@.name=='Type' && @.value=='gxa')].concat(\"true\")"
+        ],
+        "sortable": true
+      },
+      {
+        "name": "assay_count",
+        "title": "Assay count",
+        "jsonPaths": [
+          "$..subsections[?(@.type==\"Assays and Data\")].attributes[?(@.name==\"Assay count\")].value",
+          "$..sections[?(@.type==\"Assays and Data\")].attributes[?(@.name==\"Assay count\")].value"
+        ],
+        "fieldType": "long"
+      },
+      {
+        "name": "sample_count",
+        "title": "Sample count",
+        "jsonPaths": [
+          "$..subsections[?(@.type==\"Samples\")].attributes[?(@.name==\"Sample count\")].value",
+          "$..sections[?(@.type==\"Samples\")].attributes[?(@.name==\"Sample count\")].value"
+        ],
+        "fieldType": "long"
+      },
+      {
+        "name": "experimental_factor_count",
+        "title": "Experimental Factor count",
+        "jsonPaths": [
+          "$.p.subsections[?(@.type==\"Experimental Factors\")]..attributes..name",
+          "$..sections[?(@.type==\"Experimental Factors\")]..attributes..name"
+        ],
+        "fieldType": "long",
+        "sortable": true,
+        "parser": "NodeCountingParser"
+      },
+      {
+        "name": "facet.study_type",
+        "title": "Study type",
+        "fieldType": "facet"
+      },
+      {
+        "name": "facet.experimental_design",
+        "title": "Experimental Design",
+        "jsonPaths": [
+          "$..subsections[?(@.type==\"Samples\")].attributes[?(@.name==\"Experimental Designs\")].value",
+          "$..sections[?(@.type==\"Samples\")].attributes[?(@.name==\"Experimental Designs\")].value"
+        ],
+        "fieldType": "facet"
+      },
+      {
+        "name": "facet.organism",
+        "title": "Organism",
+        "fieldType": "facet"
+      },
+      {
+        "name": "facet.technology",
+        "title": "Technology",
+        "jsonPaths": [
+          "$..subsections[?(@.type==\"Assays and Data\")].attributes[?(@.name==\"Technology\")].value",
+          "$..sections[?(@.type==\"Assays and Data\")].attributes[?(@.name==\"Technology\")].value"
+        ],
+        "fieldType": "facet"
+      },
+      {
+        "name": "facet.assay_by_molecule",
+        "title": "Assay by Molecule",
+        "jsonPaths": [
+          "$..subsections[?(@.type==\"Assays and Data\")].attributes[?(@.name==\"Assay by Molecule\")].value",
+          "$..sections[?(@.type==\"Assays and Data\")].attributes[?(@.name==\"Assay by Molecule\")].value"
+        ],
+        "fieldType": "facet",
+        "naVisible": true
+      },
+      {
+        "name": "facet.raw",
+        "title": "Raw Data Available",
+        "fieldType": "facet",
+        "facetType": "boolean",
+        "multiValued": false,
+        "jsonPaths": [
+          "$..subsections[?(@.type==\"MINSEQE Score\")]..attributes[?(@.name==\"Raw\" && @.value=='*')]",
+          "$..sections[?(@.type==\"MINSEQE Score\")]..attributes[?(@.name==\"Raw\" && @.value=='*')]",
+          "$..subsections[?(@.type==\"MIAME Score\")]..attributes[?(@.name==\"Raw\" && @.value=='*')]",
+          "$..sections[?(@.type==\"MIAME Score\")]..attributes[?(@.name==\"Raw\" && @.value=='*')]"
+        ],
+        "sortable": true
+      },
+      {
+        "name": "facet.processed",
+        "title": "Processed Data Available",
+        "fieldType": "facet",
+        "facetType": "boolean",
+        "multiValued": false,
+        "jsonPaths": [
+          "$..subsections[?(@.type==\"MINSEQE Score\")]..attributes[?(@.name==\"Processed\" && @.value=='*')].concat(\"true\")",
+          "$..sections[?(@.type==\"MINSEQE Score\")]..attributes[?(@.name==\"Processed\" && @.value=='*')].concat(\"true\")",
+          "$..subsections[?(@.type==\"MIAME Score\")]..attributes[?(@.name==\"Processed\" && @.value=='*')].concat(\"true\")",
+          "$..sections[?(@.type==\"MIAME Score\")]..attributes[?(@.name==\"Processed\" && @.value=='*')].concat(\"true\")"
+        ],
+        "sortable": true
+      },
+      {
+        "name": "facet.gxa",
+        "title": "In Expression Atlas",
+        "fieldType": "facet",
+        "facetType": "boolean",
+        "multiValued": false,
+        "jsonPaths": [
+          "$..links..attributes[?(@.name=='Type' && @.value=='Expression Atlas')].concat(\"true\")"
+        ],
+        "sortable": true
+      }
+    ]
+  },
+  {
+    "collectionName": "biomodels",
+    "properties": [
+      {
+        "name": "biomodels.domain",
+        "title": "Domain",
+        "fieldType": "tokenized_string"
+      },
+      {
+        "name": "biomodels.curation_status",
+        "title": "Curation Status",
+        "fieldType": "tokenized_string"
+      },
+      {
+        "name": "biomodels.modelling_approach",
+        "title": "Modelling Approach",
+        "fieldType": "tokenized_string"
+      },
+      {
+        "name": "biomodels.model_format",
+        "title": "Model Format",
+        "fieldType": "tokenized_string"
+      },
+      {
+        "name": "biomodels.model_tags",
+        "title": "Model Tags",
+        "fieldType": "tokenized_string"
+      },
+      {
+        "name": "biomodels.organism",
+        "title": "Organism",
+        "fieldType": "tokenized_string"
+      },
+      {
+        "name": "facet.biomodels.domain",
+        "title": "Domain",
+        "fieldType": "facet"
+      },
+      {
+        "name": "facet.biomodels.curation_status",
+        "title": "Curation Status",
+        "fieldType": "facet"
+      },
+      {
+        "name": "facet.biomodels.modelling_approach",
+        "title": "Modelling Approach",
+        "fieldType": "facet"
+      },
+      {
+        "name": "facet.biomodels.model_format",
+        "title": "Model Format",
+        "fieldType": "facet"
+      },
+      {
+        "name": "facet.biomodels.model_tags",
+        "title": "Model Tags",
+        "fieldType": "facet"
+      },
+      {
+        "name": "facet.biomodels.organism",
+        "title": "Organism",
+        "fieldType": "facet"
+      }
+    ]
+  },
+  {
+    "collectionName": "europepmc",
+    "properties": [
+      {
+        "name": "facet.europepmc.funding_agency",
+        "title": "Funding Agency",
+        "fieldType": "facet",
+        "jsonPaths": [
+          "$..subsections[?(@.type==\"Funding\")].attributes[?(@.name==\"Agency\")].value",
+          "$..sections[?(@.type==\"Funding\")].attributes[?(@.name==\"Agency\")].value",
+          "$..sections[?(@.type==\"Funding\")].attributes[?(@.name==\"Agency\")].value",
+          "$..sections[?(@.type==\"Funding\")].attributes[?(@.name==\"Agency\")].value"
+        ]
+      }
+    ]
+  },
+  {
+    "collectionName": "eu-toxrisk",
+    "properties": [
+      {
+        "name": "facet.eutoxrisk.data_type",
+        "title": "Data Type",
+        "fieldType": "facet",
+        "parser": "EUToxRiskDataTypeParser"
+      },
+      {
+        "name": "facet.eutoxrisk.organ",
+        "title": "Organ",
+        "fieldType": "facet"
+      },
+      {
+        "name": "facet.eutoxrisk.organism",
+        "title": "Organism",
+        "fieldType": "facet"
+      },
+      {
+        "name": "facet.eutoxrisk.toxicity_domain",
+        "title": "Toxicity Domain",
+        "fieldType": "facet"
+      },
+      {
+        "name": "facet.eutoxrisk.compound",
+        "title": "Compound",
+        "fieldType": "facet",
+        "jsonPaths": [
+          "$.section.attributes[?(@.name=~ /Compound/i)].value",
+          "$..subsections..[?(@.type=='(Target) Compounds')]..attributes[?(@.name=='Name')].value",
+          "$..sections..[?(@.type=='(Target) Compounds')]..attributes[?(@.name=='Name')].value"
+        ]
+      },
+      {
+        "name": "facet.eutoxrisk.method_name",
+        "title": "Method name",
+        "fieldType": "facet"
+      },
+      {
+        "name": "facet.eutoxrisk.project_part",
+        "title": "Project part",
+        "fieldType": "facet"
+      }
+    ]
+  },
+  {
+    "collectionName": "rh3r",
+    "properties": [
+      {
+        "name": "facet.rh3r.wrk_pckg",
+        "title": "Project part \\(Work package\\)",
+        "fieldType": "facet",
+        "match": "^([a-zA-Z0-9.]+)"
+      },
+      {
+        "name": "facet.rh3r.case_study",
+        "title": "Project part \\(Case study\\)",
+        "fieldType": "facet",
+        "match": "^([a-zA-Z0-9.]+)"
+      },
+      {
+        "name": "facet.rh3r.info_type",
+        "title": "Type of information",
+        "fieldType": "facet"
+      },
+      {
+        "name": "facet.rh3r.organ",
+        "title": "Organ",
+        "fieldType": "facet"
+      },
+      {
+        "name": "facet.rh3r.toxy_dom",
+        "title": "Toxicity domain",
+        "fieldType": "facet"
+      },
+      {
+        "name": "facet.rh3r.org",
+        "title": "Organization",
+        "jsonPaths": [
+          "$..sections[?(@.type=='Organization' || @.type=='organisation')].attributes[?(@.name=='Name' && @.value != null)].value"
+        ],
+        "fieldType": "facet",
+        "toLowerCase": "false"
+      }
+    ]
+  },
+  {
+    "collectionName": "cancermodelsorg",
+    "properties": [
+      {
+        "name": "facet.cancermodelsorg.model_id",
+        "title": "",
+        "fieldType": "untokenized_string",
+        "jsonPaths": [
+          "$.section.attributes[?(@.name=='Model ID')].value"
+        ]
+      },
+      {
+        "name": "facet.cancermodelsorg.model_type",
+        "title": "Model type",
+        "fieldType": "facet"
+      },
+      {
+        "name": "facet.cancermodelsorg.dataset_available",
+        "title": "Dataset Available",
+        "fieldType": "facet"
+      },
+      {
+        "name": "facet.cancermodelsorg.model_availability",
+        "title": "Available for distribution",
+        "fieldType": "facet"
+      },
+      {
+        "name": "facet.cancermodelsorg.related_models",
+        "title": "Has Related Models",
+        "fieldType": "facet"
+      },
+      {
+        "name": "facet.cancermodelsorg.project",
+        "title": "Project",
+        "fieldType": "facet"
+      },
+      {
+        "name": "facet.cancermodelsorg.paediatric",
+        "title": "Paediatric",
+        "fieldType": "facet"
+      },
+      {
+        "name": "facet.cancermodelsorg.patient_sex",
+        "title": "Patient Sex",
+        "fieldType": "facet",
+        "jsonPaths": [
+          "$..sections[?(@.type=='Patient / Tumour Metadata')].attributes[?(@.name=='Patient Sex')].value",
+          "$..subsections[?(@.type=='Patient / Tumour Metadata')].attributes[?(@.name=='Patient Sex')].value"
+        ]
+      },
+      {
+        "name": "facet.cancermodelsorg.tumour_type",
+        "title": "Tumour Type",
+        "fieldType": "facet",
+        "jsonPaths": [
+          "$..sections[?(@.type=='Patient / Tumour Metadata')].attributes[?(@.name=='Tumour Type')].value",
+          "$..subsections[?(@.type=='Patient / Tumour Metadata')].attributes[?(@.name=='Tumour Type')].value"
+        ]
+      },
+      {
+        "name": "facet.cancermodelsorg.patient_ethnicity_group",
+        "title": "Patient Ethnicity Group",
+        "fieldType": "facet",
+        "jsonPaths": [
+          "$..sections[?(@.type=='Patient / Tumour Metadata')].attributes[?(@.name=='Patient Ethnicity Group')].value",
+          "$..subsections[?(@.type=='Patient / Tumour Metadata')].attributes[?(@.name=='Patient Ethnicity Group')].value"
+        ]
+      },
+      {
+        "name": "facet.cancermodelsorg.patient_age",
+        "title": "Patient Age",
+        "fieldType": "facet",
+        "jsonPaths": [
+          "$..sections[?(@.type=='Patient / Tumour Metadata')].attributes[?(@.name=='Patient Age')].value",
+          "$..subsections[?(@.type=='Patient / Tumour Metadata')].attributes[?(@.name=='Patient Age')].value"
+        ]
+      },
+      {
+        "name": "facet.cancermodelsorg.cancer_system",
+        "title": "Cancer System",
+        "fieldType": "facet",
+        "jsonPaths": [
+          "$..sections[?(@.type=='Patient / Tumour Metadata')].attributes[?(@.name=='Cancer System')].value",
+          "$..subsections[?(@.type=='Patient / Tumour Metadata')].attributes[?(@.name=='Cancer System')].value"
+        ]
+      },
+      {
+        "name": "facet.cancermodelsorg.breast_cancer_biomarkers",
+        "title": "Breast Cancer Biomarkers",
+        "fieldType": "facet"
+      },
+      {
+        "name": "facet.cancermodelsorg.msi_status",
+        "title": "MSI Status",
+        "fieldType": "facet",
+        "jsonPaths": [
+          "$..sections[?(@.type=='Immune markers')]..sections.attributes[?(@.name == 'MSI')].value",
+          "$..subsections[?(@.type=='Immune markers')]..subsections.attributes[?(@.name == 'MSI')].value"
+        ]
+      },
+      {
+        "name": "facet.cancermodelsorg.hla_types",
+        "title": "HLA Types",
+        "fieldType": "facet",
+        "jsonPaths": [
+          "$..sections[?(@.type=='Immune markers')]..sections[?(@.type=='HLA')].attributes[?(@.name != 'Sample ID')].name",
+          "$..subsections[?(@.type=='Immune markers')]..subsections[?(@.type=='HLA')].attributes[?(@.name != 'Sample ID')].name"
+        ]
+      },
+      {
+        "name": "facet.cancermodelsorg.patient_treatment_response",
+        "title": "Patient Treatment Response",
+        "fieldType": "facet",
+        "jsonPaths": [
+          "$..sections[?(@.type=='Patient treatment')].attributes[?(@.name == 'Response')].value",
+          "$..subsections[?(@.type=='Patient treatment')].attributes[?(@.name == 'Response')].value"
+        ]
+      },
+      {
+        "name": "facet.cancermodelsorg.model_treatment_response",
+        "title": "Model Treatment Response",
+        "fieldType": "facet",
+        "jsonPaths": [
+          "$..sections[?(@.type=='Model treatment')].attributes[?(@.name == 'Response')].value",
+          "$..subsections[?(@.type=='Model treatment')].attributes[?(@.name == 'Response')].value"
+        ]
+      }
+    ]
+  },
+  {
+    "collectionName": "public",
+    "properties": [
+      {
+        "name": "access",
+        "title": "",
+        "fieldType": "tokenized_string",
+        "jsonPaths": [
+          "$.accessTags[?(@ =~ /[^{].*/i)]",
+          "$.accessTags[?(@.size() > 0)].name",
+          "$.collections..accNo",
+          "$.owner"
+        ],
+        "analyzer": "AccessFieldAnalyzer",
+        "parser": "AccessParser",
+        "toLowerCase": "true"
+      },
+      {
+        "name": "accession",
+        "title": "",
+        "fieldType": "tokenized_string",
+        "retrieved": true,
+        "analyzer": "AttributeFieldAnalyzer",
+        "jsonPaths": [
+          "$.accno",
+          "$.accNo"
+        ]
+      },
+      {
+        "name": "type",
+        "title": "",
+        "fieldType": "untokenized_string",
+        "retrieved": true,
+        "analyzer": "AttributeFieldAnalyzer",
+        "parser": "TypeParser"
+      },
+      {
+        "name": "title",
+        "title": "",
+        "fieldType": "tokenized_string",
+        "retrieved": true,
+        "sortable": true,
+        "analyzer": "ExperimentTextAnalyzer",
+        "jsonPaths": [
+          "$.attributes[?(@.name == 'Title')].value",
+          "$.section.attributes[?(@.name == 'Title')].value",
+          "$.title"
+        ]
+      },
+      {
+        "name": "author",
+        "title": "",
+        "fieldType": "tokenized_string",
+        "jsonPaths": [
+          "$.section.subsections[?(@.type==\"Author\")].attributes[?(@.name==\"Name\")].value",
+          "$.section.sections[?(@.type==\"Author\")].attributes[?(@.name==\"Name\")].value"
+        ],
+        "retrieved": true,
+        "sortable": true,
+        "analyzer": "AttributeFieldAnalyzer",
+        "parser": "JPathListParser"
+      },
+      {
+        "name": "content",
+        "title": "",
+        "fieldType": "tokenized_string",
+        "expanded": true,
+        "analyzer": "ExperimentTextAnalyzer",
+        "parser": "ContentParser"
+      },
+      {
+        "name": "links",
+        "title": "",
+        "fieldType": "long",
+        "jsonPaths": [
+          "$..links.*[?(@.url)]"
+        ],
+        "retrieved": true,
+        "sortable": true,
+        "parser": "NodeCountingParser"
+      },
+      {
+        "name": "files",
+        "title": "",
+        "fieldType": "long",
+        "jsonPaths": [
+          "$..files.*[?(@.type==\"file\")]",
+          "$..files[?(@.extType=='file')].fileName"
+        ],
+        "retrieved": true,
+        "sortable": true,
+        "parser": "NodeCountingParser"
+      },
+      {
+        "name": "release_date",
+        "title": "",
+        "fieldType": "untokenized_string",
+        "retrieved": true,
+        "sortable": true,
+        "analyzer": "AttributeFieldAnalyzer",
+        "parser": "ReleaseDateParser"
+      },
+      {
+        "name": "ctime",
+        "title": "",
+        "fieldType": "long",
+        "sortable": true,
+        "parser": "CreationTimeParser"
+      },
+      {
+        "name": "mtime",
+        "title": "",
+        "fieldType": "long",
+        "sortable": true,
+        "parser": "ModificationTimeParser"
+      },
+      {
+        "name": "facet.modification_year",
+        "title": "",
+        "fieldType": "long",
+        "sortable": true,
+        "parser": "ModificationYearParser"
+      },
+      {
+        "name": "rtime",
+        "title": "",
+        "fieldType": "long",
+        "sortable": true,
+        "parser": "ReleaseTimeParser"
+      },
+      {
+        "name": "views",
+        "title": "",
+        "fieldType": "long",
+        "sortable": true,
+        "parser": "ViewCountParser",
+        "retrieved": true
+      },
+      {
+        "name": "id",
+        "title": "",
+        "fieldType": "untokenized_string",
+        "jsonPaths": [
+          "$.accno",
+          "$.accNo"
+        ]
+      },
+      {
+        "name": "seckey",
+        "title": "",
+        "fieldType": "untokenized_string",
+        "jsonPaths": [
+          "$.seckey",
+          "$.secretKey"
+        ]
+      },
+      {
+        "name": "orcid",
+        "title": "",
+        "fieldType": "tokenized_string",
+        "jsonPaths": [
+          "$.section.subsections[?(@.type==\"Author\")].attributes[?(@.name==\"ORCID\")].value",
+          "$.section.sections[?(@.type==\"Author\")].attributes[?(@.name==\"ORCID\")].value"
+        ],
+        "analyzer": "AccessFieldAnalyzer",
+        "parser": "JPathListParser"
+      },
+      {
+        "name": "sections_with_files",
+        "title": "",
+        "fieldType": "untokenized_string",
+        "analyzer": "AccessFieldAnalyzer",
+        "parser": "NullParser"
+      },
+      {
+        "name": "link_type",
+        "title": "Link Type",
+        "fieldType": "tokenized_string",
+        "analyzer": "ExperimentTextAnalyzer",
+        "jsonPaths": [
+          "$..links..attributes[?(@.name=='Type')].value",
+          "$..links[?(@.extType=='link')]..attributes[?(@.name=='Type')].value"
+        ],
+        "parser": "JPathListParser"
+      },
+      {
+        "name": "link_value",
+        "title": "Link Value",
+        "fieldType": "tokenized_string",
+        "analyzer": "ExperimentTextAnalyzer",
+        "jsonPaths": [
+          "$..links..url",
+          "$..links[?(@.extType=='link')].url"
+        ],
+        "parser": "JPathListParser"
+      },
+      {
+        "name": "collection",
+        "title": "Collection",
+        "fieldType": "untokenized_string",
+        "jsonPaths": [
+          "$.collections..accNo"
+        ],
+        "parser": "JPathListParser",
+        "toLowerCase": "true"
+      },
+      {
+        "name": "facet.collection",
+        "title": "Collection",
+        "fieldType": "facet",
+        "jsonPaths": [
+          "$.projects..accNo",
+          "$.collections..accNo",
+          "$.attributes[?(@.name==\"AttachTo\")].value"
+        ],
+        "parser": "JPathListParser",
+        "toLowerCase": "true",
+        "defaultValue": "None"
+      },
+      {
+        "name": "facet.released_year",
+        "title": "Released",
+        "fieldType": "facet",
+        "multiValued": false,
+        "parser": "ReleaseYearParser"
+      },
+      {
+        "name": "facet.modification_year",
+        "title": "Created/Modified",
+        "fieldType": "facet",
+        "multiValued": false,
+        "private": true,
+        "parser": "ModificationYearParser"
+      },
+      {
+        "name": "facet.link_type",
+        "title": "Link Type",
+        "fieldType": "facet",
+        "jsonPaths": [
+          "$..links..attributes[?(@.name=='Type')].value",
+          "$..links[?(@.extType=='link')]..attributes[?(@.name=='Type')].value"
+        ],
+        "parser": "JPathListParser"
+      },
+      {
+        "name": "facet.file_type",
+        "title": "File Type",
+        "fieldType": "facet",
+        "parser": "FileTypeParser"
+      },
+      {
+        "name": "relPath",
+        "title": "",
+        "fieldType": "untokenized_string",
+        "jsonPaths": [
+          "$.relPath"
+        ]
+      },
+      {
+        "name": "storageMode",
+        "title": "",
+        "fieldType": "untokenized_string",
+        "jsonPaths": [
+          "$.storageMode"
+        ],
+        "defaultValue": "NFS"
+      }
+    ]
+  }
+]

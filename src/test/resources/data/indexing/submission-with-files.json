@@ -1,0 +1,113 @@
+{
+  "accNo": "S-BSST1432",
+  "attributes": [
+    {
+      "name": "Template",
+      "value": "Default.v2"
+    },
+    {
+      "name": "DOI",
+      "value": "10.6019/S-BSST1432"
+    },
+    {
+      "name": "ReleaseDate",
+      "value": "2124-05-21"
+    }
+  ],
+  "section": {
+    "type": "Study",
+    "attributes": [
+      {
+        "name": "Title",
+        "value": "Pharyngeal neuronal mechanisms governing carboxylic acid perception in Drosophila melanogaster"
+      },
+      {
+        "name": "Description",
+        "value": "The sensation of sour taste from pharyngeal sense organ have been enigmatic."
+      },
+      {
+        "name": "Organism",
+        "value": "Drosophila melanogaster (fruit fly)"
+      },
+      {
+        "name": "License",
+        "value": "CC0",
+        "valqual": [
+          {
+            "name": "URL",
+            "value": "https://creativecommons.org/publicdomain/zero/1.0/legalcode"
+          }
+        ]
+      }
+    ],
+    "files": [
+      {
+        "fileName": "root1.txt",
+        "filePath": "root1.txt",
+        "type": "file",
+        "attributes": [
+          {
+            "name": "Format",
+            "value": "txt"
+          }
+        ]
+      },
+      {
+        "files": [
+          {
+            "fileName": "root-table-1.txt",
+            "filePath": "root-table-1.txt",
+            "type": "file"
+          },
+          {
+            "fileName": "root-table-2.txt",
+            "filePath": "root-table-2.txt",
+            "type": "file"
+          }
+        ]
+      }
+    ],
+    "subsections": [
+      {
+        "accNo": "a-sub-section",
+        "type": "Sample",
+        "attributes": [
+          {
+            "name": "Name",
+            "value": "sample-1"
+          }
+        ],
+        "files": [
+          {
+            "fileName": "nested1.txt",
+            "filePath": "nested1.txt",
+            "type": "file",
+            "attributes": [
+              {
+                "name": "Type",
+                "value": "IDF File",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": []
+              },
+              {
+                "name": "Format",
+                "value": "tab-delimited text",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": []
+              },
+              {
+                "name": "Description",
+                "value": "Investigation Design Format (IDF)",
+                "reference": false,
+                "nameAttrs": [],
+                "valueAttrs": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

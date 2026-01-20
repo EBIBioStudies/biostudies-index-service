@@ -1,0 +1,40 @@
+image: eclipse-temurin:21-jdk
+
+variables:
+  # This will suppress any download for dependencies and plugins or upload messages 
+  # which would clutter the console log. `showDateTime` will show the passed time 
+  # in milliseconds. You need to specify `--batch-mode` to make this work.
+  MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository -Dorg.slf4j.simpleLogger.showDateTime=true"
+  MAVEN_CLI_OPTS: "--batch-mode --errors --fail-at-end --show-version"
+  # Instruct Testcontainers to use the local Docker daemon
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_TLS_CERTDIR: ""
+  DOCKER_DRIVER: overlay2
+
+# Cache maven dependencies across builds
+cache:
+  paths:
+    - .m2/repository
+
+stages:
+  - build
+
+build-and-test:
+  stage: build
+  services:
+    - name: docker:24.0.5-dind
+      alias: docker
+      command: ["--tls=false"]
+  script:
+    # Ensure the Maven wrapper is executable
+    - chmod +x mvnw
+    # Run clean, then compile and run all tests (unit and integration)
+    # The integration tests will use the dind service for RabbitMQ and MockServer
+    - ./mvnw $MAVEN_CLI_OPTS clean verify
+  artifacts:
+    when: always
+    paths:
+      - target/*.jar
+      - target/surefire-reports/
+      - target/failsafe-reports/
+    expire_in: 1 week
