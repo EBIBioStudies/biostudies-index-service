@@ -8,7 +8,7 @@ import uk.ac.ebi.biostudies.index_service.metadata.IndexMetadataDto;
 import uk.ac.ebi.biostudies.index_service.metadata.IndexesMetadataService;
 
 @RestController
-@RequestMapping("indexes")
+@RequestMapping("/internal/api/indexes")
 
 public class indexesMetadataController {
 

@@ -28,7 +28,7 @@ import uk.ac.ebi.biostudies.index_service.index.TaskStatus;
  */
 @Slf4j
 @RestController
-@RequestMapping("/submissions")
+@RequestMapping("/internal/api/submissions")
 @Tag(
     name = "Indexing Operations",
     description =
@@ -87,7 +87,7 @@ public class SubmissionIndexController {
                 mediaType = "application/json",
                 schema = @Schema(implementation = RestResponse.class)))
   })
-  @PostMapping("/{accNo}/index")
+  @PostMapping("/{accNo}/reindex")
   public ResponseEntity<RestResponse<IndexingInfo>> queueIndexSubmission(
       @Parameter(description = "Submission accession (e.g., S-BSST1432)", example = "S-BSST1432")
           @PathVariable
@@ -206,7 +206,7 @@ public class SubmissionIndexController {
     @ApiResponse(responseCode = "400", description = "Invalid filters or pageSize"),
     @ApiResponse(responseCode = "503", description = "Indexing service unavailable")
   })
-  @PostMapping("/index/stream") //
+  @PostMapping("/indexing/stream") //
   public ResponseEntity<RestResponse<IndexingInfo>> queueStreamIndexing(
       @io.swagger.v3.oas.annotations.parameters.RequestBody(
               description = "Batch indexing request",
