@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.ebi.ac.uk/efo/"
+     xml:base="http://www.ebi.ac.uk/efo/"
+     xmlns:obo="http://purl.obolibrary.org/obo/"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:xml="http://www.w3.org/XML/1998/namespace"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:oboInOwl="http://www.geneontology.org/formats/oboInOwl#">
+
+    <!-- Root node -->
+    <owl:Class rdf:about="http://www.ebi.ac.uk/efo/EFO_0000001">
+        <rdfs:label>experimental factor</rdfs:label>
+        <oboInOwl:hasExactSynonym>factor</oboInOwl:hasExactSynonym>
+    </owl:Class>
+
+    <!-- Disease node -->
+    <owl:Class rdf:about="http://www.ebi.ac.uk/efo/EFO_0000408">
+        <rdfs:label>disease</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://www.ebi.ac.uk/efo/EFO_0000001"/>
+        <oboInOwl:hasExactSynonym>illness</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasExactSynonym>disorder</oboInOwl:hasExactSynonym>
+    </owl:Class>
+
+    <!-- Cancer node -->
+    <owl:Class rdf:about="http://www.ebi.ac.uk/efo/EFO_0000311">
+        <rdfs:label>cancer</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://www.ebi.ac.uk/efo/EFO_0000408"/>
+        <oboInOwl:hasExactSynonym>neoplasm</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasExactSynonym>tumor</oboInOwl:hasExactSynonym>
+    </owl:Class>
+
+    <!-- Lung cancer node -->
+    <owl:Class rdf:about="http://www.ebi.ac.uk/efo/EFO_0001071">
+        <rdfs:label>lung cancer</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://www.ebi.ac.uk/efo/EFO_0000311"/>
+        <oboInOwl:hasExactSynonym>lung carcinoma</oboInOwl:hasExactSynonym>
+    </owl:Class>
+
+</rdf:RDF>

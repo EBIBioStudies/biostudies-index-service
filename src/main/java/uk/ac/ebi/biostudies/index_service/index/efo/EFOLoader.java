@@ -25,7 +25,6 @@ import org.semanticweb.owlapi.reasoner.NodeSet;
 import org.semanticweb.owlapi.reasoner.OWLReasoner;
 import org.semanticweb.owlapi.reasoner.OWLReasonerFactory;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
 import uk.ac.ebi.biostudies.index_service.config.EFOConfig;
 
@@ -92,8 +91,10 @@ public class EFOLoader {
       }
 
       try (InputStream is = new FileInputStream(efoFile)) {
+        log.info("Preparing to process {}", efoFile.toPath());
         LoadResult result = load(is); // Returns model + version
-        EFOModel cleanModel = removeIgnoredClasses(result.model, config.getIgnoreListFilename());
+        log.info("EFO file processed. Removing not needed classes");
+        EFOModel cleanModel = removeIgnoredClasses(result.model, config.getIgnoreList());
         resolver = new EFOTermResolver(cleanModel, result.version);
 
         log.info(
@@ -179,12 +180,13 @@ public class EFOLoader {
     File external = new File(config.getOwlFilename());
 
     if (external.exists()) {
+      log.info("External EFO file {} exists", config.getOwlFilename());
       return external;
     }
 
     // 2. Try download (with timeout)
     try {
-      log.warn("External missing, attempting download...");
+      log.warn("External EFO file missing, attempting download...");
       downloadEFO(external);
       return external;
     } catch (IOException e) {

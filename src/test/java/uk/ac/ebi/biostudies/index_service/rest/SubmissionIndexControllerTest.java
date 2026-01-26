@@ -106,7 +106,7 @@ class SubmissionIndexControllerTest {
     given()
         .contentType(ContentType.JSON)
         .when()
-        .post("/submissions/{accNo}/index", accNo)
+        .post("/internal/api/submissions/{accNo}/reindex", accNo)
         .then()
         .statusCode(HttpStatus.SC_ACCEPTED)  // 202
         .contentType(ContentType.JSON)
@@ -123,7 +123,7 @@ class SubmissionIndexControllerTest {
   @Test
   void shouldReturnNotFoundStatusForNonexistentTask() {
     given()
-        .when().get("/submissions/{accNo}/status", "S-NONEXISTENT")
+        .when().get("/internal/api/submissions/{accNo}/status", "S-NONEXISTENT")
         .then()
         .statusCode(HttpStatus.SC_OK)
         .body("success", is(true))
@@ -135,7 +135,7 @@ class SubmissionIndexControllerTest {
   @Test
   void shouldListEmptyActiveTasks() {
     given()
-        .when().get("/submissions/tasks")
+        .when().get("/internal/api/submissions/tasks")
         .then()
         .statusCode(HttpStatus.SC_OK)
         .body("success", is(true))

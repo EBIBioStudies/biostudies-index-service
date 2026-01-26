@@ -56,6 +56,7 @@ public class IndexManager {
    * @throws IllegalStateException if an IOException occurs during opening the index
    */
   public void openIndex(IndexName indexName, String indexPath) {
+    log.info("Opening index {} [{}]", indexName.getIndexName(), indexPath);
     String indexNameStr = indexName.getIndexName();
     try {
       // Open directories
@@ -144,6 +145,22 @@ public class IndexManager {
 
   public IndexWriter getSubmissionIndexWriter() {
     return container.getIndexWriter(IndexName.SUBMISSION);
+  }
+
+  public IndexSearcher acquireSubmissionIndexSearcher() throws IOException {
+    return container.acquireSearcher(IndexName.SUBMISSION);
+  }
+
+  public IndexSearcher acquireSearcher(IndexName indexName) throws IOException {
+    return container.acquireSearcher(indexName);
+  }
+
+  public void releaseSearcher(IndexName indexName, IndexSearcher searcher) throws IOException {
+    container.releaseSearcher(indexName, searcher);
+  }
+
+  public IndexWriter getEFOIndexWriter() {
+    return container.getIndexWriter(IndexName.EFO);
   }
 
   public IndexWriter getFilesIndexWriter() {

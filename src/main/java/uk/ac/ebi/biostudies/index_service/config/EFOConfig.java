@@ -1,36 +1,59 @@
 package uk.ac.ebi.biostudies.index_service.config;
 
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import lombok.Getter;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.PropertySource;
+import lombok.Setter;
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 /**
- * Security configuration loaded from classpath:properties.properties.
+ * Configuration for EFO (Experimental Factor Ontology) loading and indexing. Properties loaded from
+ * {@code application.properties} with prefix {@code efo}.
  *
- * <p>This is a facade that aggregates various efo-index configuration properties.
+ * <p>Initializes stop words set after Spring property injection via {@link InitializingBean}.
  */
 @Getter
+@Setter
 @Component
-@PropertySource("classpath:efo.properties")
-public class EFOConfig {
+@ConfigurationProperties(prefix = "efo")
+public class EFOConfig implements InitializingBean {
 
-  private final String stopWords;
-  private final String synonymFilename;
-  private final String ignoreListFilename;
-  private final String owlFilename;
-  private final String updateUrl;
+  /**
+   * Parsed stop words set (lowercase, trimmed). Populated after properties set via {@link
+   * #afterPropertiesSet()}.
+   */
+  private final Set<String> stopWordsSet = new HashSet<>();
 
-  public EFOConfig(
-      @Value("${efo.stopwords:}") String stopWords,
-      @Value("${efo.synonyms:}") String synonymFilename,
-      @Value("${efo.ignore-list:}") String ignoreListFilename,
-      @Value("${efo.owl-filename:}") String owlFilename,
-      @Value("${efo.update-url:}") String updateUrl) {
-    this.stopWords = stopWords;
-    this.synonymFilename = synonymFilename;
-    this.ignoreListFilename = ignoreListFilename;
-    this.owlFilename = owlFilename;
-    this.updateUrl = updateUrl;
+  private String stopwords;
+  private String synonyms;
+  private String ignoreList;
+  private String owlFilename;
+  private String updateUrl;
+  private String localOwlFilename;
+
+  /**
+   * Parses comma-separated stop words into set. Called automatically by Spring after property
+   * injection.
+   */
+  @Override
+  public void afterPropertiesSet() {
+    if (stopwords != null && !stopwords.isBlank()) {
+      String[] words = stopwords.split("\\s*,\\s*");
+      for (String word : words) {
+        if (!word.isBlank()) {
+          stopWordsSet.add(word.toLowerCase().trim());
+        }
+      }
+    }
+  }
+
+  /**
+   * Returns unmodifiable view of stop words set. Prevents external modification of internal set.
+   */
+  public Set<String> getStopWordsSet() {
+    return Collections.unmodifiableSet(stopWordsSet);
   }
 }

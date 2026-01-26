@@ -3,9 +3,9 @@ package uk.ac.ebi.biostudies.index_service.index.management;
 import java.util.Arrays;
 import java.util.List;
 import org.springframework.stereotype.Component;
-import uk.ac.ebi.biostudies.index_service.index.management.init.EfoIndexInitializer;
 import uk.ac.ebi.biostudies.index_service.index.IndexName;
 import uk.ac.ebi.biostudies.index_service.index.LuceneIndexConfig;
+import uk.ac.ebi.biostudies.index_service.index.management.init.EfoIndexInitializer;
 import uk.ac.ebi.biostudies.index_service.index.management.init.StandardIndexInitializer;
 
 /**
@@ -36,22 +36,20 @@ public class IndexInitializerFactory {
   private final LuceneIndexConfig luceneIndexConfig;
   private final List<IndexInitializer> standardIndexInitializers;
   private final EfoIndexInitializer efoIndexInitializer;
-  private final IndexContainer indexContainer;
   private final IndexManager indexManager;
 
   public IndexInitializerFactory(
       LuceneIndexConfig luceneIndexConfig,
-      IndexContainer indexContainer,
+      EfoIndexInitializer efoIndexInitializer,
       IndexManager indexManager) {
     this.luceneIndexConfig = luceneIndexConfig;
-    this.indexContainer = indexContainer;
+    this.efoIndexInitializer = efoIndexInitializer;
     this.indexManager = indexManager;
     standardIndexInitializers =
         Arrays.asList(
             buildSubmissionIndexInitializer(),
             buildFilesIndexInitializer(),
             buildPageTabIndexInitializer());
-    this.efoIndexInitializer = new EfoIndexInitializer();
   }
 
   /** Opens all standard Lucene indexes (directories, writers, readers). */
