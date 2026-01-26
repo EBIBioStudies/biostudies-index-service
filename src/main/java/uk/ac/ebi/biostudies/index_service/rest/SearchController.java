@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import uk.ac.ebi.biostudies.index_service.registry.model.CollectionRegistry;
 import uk.ac.ebi.biostudies.index_service.registry.service.CollectionRegistryService;
 import uk.ac.ebi.biostudies.index_service.search.SearchRequest;
+import uk.ac.ebi.biostudies.index_service.search.SearchResponseDTO;
 import uk.ac.ebi.biostudies.index_service.search.SearchService;
 
 /**
@@ -75,7 +76,7 @@ public class SearchController {
    * @param params remaining params processed as facets or fields
    */
   @GetMapping(value = "/search", produces = MediaType.APPLICATION_JSON_VALUE)
-  public ResponseEntity<String> search(
+  public ResponseEntity<SearchResponseDTO> search(
       @RequestParam(defaultValue = "") String query,
       @RequestParam(defaultValue = "1") Integer page,
       @RequestParam(defaultValue = "20") Integer pageSize,
@@ -95,10 +96,13 @@ public class SearchController {
 
     populateFacetFields(params, searchRequest);
 
+    // Call search service and get response
+    SearchResponseDTO response = searchService.search(searchRequest);
+
     searchService.search(searchRequest);
 
     // TODO: Inject SearchService and call searchService.search(searchRequest);
-    return ResponseEntity.ok("{}");
+    return ResponseEntity.ok(response);
   }
 
   /**
