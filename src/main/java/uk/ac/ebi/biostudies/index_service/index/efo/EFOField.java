@@ -14,22 +14,22 @@ public enum EFOField {
   ID("id"),
 
   /** EFO accession (e.g., EFO_0000001) */
-  EFO_ID("efoid"),
+  EFO_ID("efo_id"),
 
   /** Primary term label */
   TERM("term"),
 
   /** Alternative term synonyms (hasExactSynonym) */
-  ALTERNATIVE_TERMS("altterm"),
+  ALTERNATIVE_TERMS("alt_term"),
 
   /** Full-text searchable content (all terms combined) */
   CONTENT("content"),
 
   /** Child node IDs (subClassOf hierarchy) */
-  CHILDREN("child"),  // ← Fixed typo: CHILDRERN
+  CHILDREN("child"),
 
   /** Parent node IDs (superClassOf) */
-  PARENT("father"),  // Consider renaming value to "parent"
+  PARENT("parent"),
 
   /** Aggregated field (all terms + alts) */
   ALL("all");
