@@ -15,6 +15,8 @@ public class SearchRequest {
   @NotBlank
   private String query = "";
 
+  private String collection;
+
   @Min(1)
   private Integer page = 1;
 
@@ -26,7 +28,12 @@ public class SearchRequest {
 
   private String sortOrder = "descending";
 
+  private Integer facetLimit;
+
   private Map<String, List<String>> facets = new LinkedHashMap<>();
 
-  private Map<String, List<String>> fields = new LinkedHashMap<>();
+  private Map<String, String> fields = new LinkedHashMap<>();
+
+  // Feature flags set by preprocessor
+  private boolean highlightingEnabled;
 }

@@ -1,7 +1,6 @@
 package uk.ac.ebi.biostudies.index_service.rest;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -29,11 +28,9 @@ public class SearchController {
       Set.of("pagesize", "page", "sortby", "sortorder", "query", "limit");
 
   private final CollectionRegistryService collectionRegistryService;
-
+  private final SearchService searchService;
   /** Thread-safe lazy cache for registry field names. Initialized on first access. */
   private volatile Set<String> fieldNames; // volatile for DCL pattern
-
-  private final SearchService searchService;
 
   public SearchController(CollectionRegistryService collectionRegistryService,
       SearchService searchService) {
@@ -99,8 +96,6 @@ public class SearchController {
     // Call search service and get response
     SearchResponseDTO response = searchService.search(searchRequest);
 
-    searchService.search(searchRequest);
-
     // TODO: Inject SearchService and call searchService.search(searchRequest);
     return ResponseEntity.ok(response);
   }
@@ -120,7 +115,7 @@ public class SearchController {
             String facetName = extractFacetName(key);
             request.getFacets().put(facetName, new ArrayList<>(values));
           } else if (getFieldNames().contains(key.toLowerCase())) {
-            request.getFields().put(key, List.of(values.get(0))); // Single-value fields
+            request.getFields().put(key, values.getFirst()); // Single-value fields
           }
         });
   }

@@ -1,5 +1,6 @@
 package uk.ac.ebi.biostudies.index_service.rest;
 
+import java.io.IOException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +23,12 @@ public class EFOTMPController {
   @PostMapping("/load") //
   public ResponseEntity<RestResponse<String>> testLoad() {
     efoManager.loadEFO();
+    return ResponseEntity.accepted().body(new RestResponse<>(true, "ok", null, List.of()));
+  }
+
+  @PostMapping("/index") //
+  public ResponseEntity<RestResponse<String>> testIndex() throws IOException {
+    efoManager.indexEFO();
     return ResponseEntity.accepted().body(new RestResponse<>(true, "ok", null, List.of()));
   }
 }

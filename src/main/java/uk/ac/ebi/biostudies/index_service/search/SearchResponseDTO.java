@@ -2,7 +2,6 @@ package uk.ac.ebi.biostudies.index_service.search;
 
 import java.util.List;
 import java.util.Map;
-import lombok.NoArgsConstructor;
 
 /**
  * DTO representing paginated search results with facets and query expansion metadata.
@@ -18,6 +17,7 @@ import lombok.NoArgsConstructor;
  * @param expandedSynonyms list of expanded synonym terms
  * @param query the processed query string
  * @param facets map of facet names to their selected values
+ * @param facetDimensions dimensions
  * @param hits list of search result documents
  */
 public record SearchResponseDTO(
@@ -32,4 +32,5 @@ public record SearchResponseDTO(
     List<String> expandedSynonyms,
     String query,
     Map<String, List<String>> facets,
-    List<Map<String, Object>> hits) {}
+    List<FacetDimensionDTO> facetDimensions,
+    List<HitDTO> hits) {}

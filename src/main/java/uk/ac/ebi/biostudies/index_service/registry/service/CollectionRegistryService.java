@@ -24,6 +24,7 @@ public class CollectionRegistryService {
   private volatile CollectionRegistry currentRegistry; // volatile for safe publish
 
   private Map<String, List<PropertyDescriptor>> collectionPropertiesCache;
+  private String[] searchableFieldsCache;
   private List<PropertyDescriptor> publicProperties;
 
   @Value("${collection.registry.location}")
@@ -57,10 +58,15 @@ public class CollectionRegistryService {
     }
     collectionPropertiesCache = Map.copyOf(cache);
 
+    // Cache searchable fields
+    searchableFieldsCache =
+        currentRegistry.getGlobalPropertyRegistry().keySet().toArray(new String[0]);
+
     log.debug(
-        "Cache initialized: {} collections, {} public properties",
+        "Cache initialized: {} collections, {} public properties, {} searchable fields",
         collectionPropertiesCache.size(),
-        publicProperties.size());
+        publicProperties.size(),
+        searchableFieldsCache.length);
   }
 
   /**
@@ -78,6 +84,18 @@ public class CollectionRegistryService {
     initCache();
     log.debug("{} properties successfully loaded", registry.getGlobalPropertyRegistry().size());
     return registry;
+  }
+
+  /**
+   * Gets cached array of searchable field names. This array is reused for performance.
+   *
+   * @return array of field names (do not modify!)
+   */
+  public String[] getSearchableFields() {
+    if (searchableFieldsCache == null) {
+      throw new IllegalStateException("Registry not initialized");
+    }
+    return searchableFieldsCache; // Return cached array
   }
 
   /**
@@ -102,13 +120,45 @@ public class CollectionRegistryService {
     List<PropertyDescriptor> result = new ArrayList<>(publicProperties);
     if (collectionName != null) {
       String lowerName = collectionName.toLowerCase();
-      if (!Constants.PUBLIC.equalsIgnoreCase(lowerName)) {  // Case-insensitive public check
-        List<PropertyDescriptor> specific = collectionPropertiesCache != null
-            ? collectionPropertiesCache.getOrDefault(lowerName, List.of())
-            : List.of();
+      if (!Constants.PUBLIC.equalsIgnoreCase(lowerName)) { // Case-insensitive public check
+        List<PropertyDescriptor> specific =
+            collectionPropertiesCache != null
+                ? collectionPropertiesCache.getOrDefault(lowerName, List.of())
+                : List.of();
         result.addAll(specific);
       }
     }
     return List.copyOf(result);
+  }
+
+  /**
+   * Retrieves a property descriptor by its unique name from the global registry.
+   *
+   * <p>This method performs a lookup across all collections in the registry to find a property with
+   * the specified name. The global property registry aggregates properties from all configured
+   * collections, ensuring that property names are unique across the entire system.
+   *
+   * <p><strong>Thread safety:</strong> This method is safe to call concurrently as it reads from an
+   * immutable registry map.
+   *
+   * <p><strong>Example usage:</strong>
+   *
+   * <pre>{@code
+   * PropertyDescriptor organismProp = registryService.findPropertyByName("facet.organism");
+   * if (organismProp != null && organismProp.isFacet()) {
+   *     // Use the property descriptor for faceted search
+   * }
+   * }</pre>
+   *
+   * @param propertyName the unique name of the property to retrieve (e.g., "facet.organism",
+   *     "field.title"). May be null.
+   * @return the {@link PropertyDescriptor} matching the specified name, or {@code null} if no such
+   *     property exists or if propertyName is null
+   * @throws IllegalStateException if the registry has not been loaded yet (currentRegistry is null)
+   * @see CollectionRegistry#getGlobalPropertyRegistry()
+   * @see PropertyDescriptor
+   */
+  public PropertyDescriptor getPropertyDescriptor(String propertyName) {
+    return currentRegistry.getPropertyDescriptor(propertyName);
   }
 }

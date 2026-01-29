@@ -30,12 +30,6 @@ import uk.ac.ebi.biostudies.index_service.config.EFOConfig;
 @Component
 public class EFOExpanderIndexer {
 
-  /** Field name for searchable expansion keys */
-  public static final String FIELD_TERM = "qe.term";
-
-  /** Field name for expansion values */
-  public static final String FIELD_EFO = "qe.efo";
-
   private final EFOConfig efoConfig;
 
   public EFOExpanderIndexer(EFOConfig efoConfig) {
@@ -127,8 +121,8 @@ public class EFOExpanderIndexer {
     // Add synonyms as both searchable keys and expansion values
     for (String syn : synonyms) {
       if (!isStopExpansionTerm(syn)) {
-        addExpansionField(doc, FIELD_TERM, syn);
-        addExpansionField(doc, FIELD_EFO, syn);
+        addExpansionField(doc, EFOIndexFields.TERM, syn);
+        addExpansionField(doc, EFOIndexFields.EFO, syn);
         termCount++;
       }
     }
@@ -136,14 +130,14 @@ public class EFOExpanderIndexer {
     // Add children as expansion values only
     for (String child : childTerms) {
       if (!isStopExpansionTerm(child)) {
-        addExpansionField(doc, FIELD_EFO, child);
+        addExpansionField(doc, EFOIndexFields.EFO, child);
         childCount++;
       }
     }
 
     // Add primary term as searchable key
     if (!isStopExpansionTerm(term)) {
-      addExpansionField(doc, FIELD_TERM, term);
+      addExpansionField(doc, EFOIndexFields.TERM, term);
       termCount++;
     }
 

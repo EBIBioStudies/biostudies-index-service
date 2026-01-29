@@ -1,0 +1,16 @@
+# Collection hierarchy configuration
+# Defines parent-child relationships between collections
+# When searching a parent collection, results include all child collections
+
+subcollections:
+  BioImages:
+    children:
+      - JCB
+      - BioImages-EMPIAR
+    description: "BioImages and its specialized subcollections"
+
+  # Future: Add more hierarchies as needed
+  # ArrayExpress:
+  #   children:
+  #     - ArrayExpress-Atlas
+  #     - ArrayExpress-Repository

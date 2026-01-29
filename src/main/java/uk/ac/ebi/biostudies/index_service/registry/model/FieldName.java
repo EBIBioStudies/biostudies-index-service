@@ -43,6 +43,9 @@ public enum FieldName {
   /** Facet link type */
   FACET_LINK_TYPE("facet.link_type"),
 
+  /** secret key */
+  SECRET_KEY("seckey"),
+
   /** Collection membership */
   COLLECTION("collection");
 
