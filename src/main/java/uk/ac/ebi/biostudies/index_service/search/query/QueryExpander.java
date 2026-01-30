@@ -36,7 +36,7 @@ public class QueryExpander {
    * @param baseQuery the original query
    * @return expansion result containing expanded query and metadata
    */
-  public QueryExpansionResult expand(Query baseQuery) {
+  public QueryResult expand(Query baseQuery) {
     log.debug("Expanding query: {}", baseQuery);
 
     try {
@@ -46,27 +46,23 @@ public class QueryExpander {
       QueryExpansionPair result = expandInternal(expandableFields, baseQuery);
 
       if (result.expansionTerms == null) {
-        return QueryExpansionResult.noExpansion(baseQuery);
+        return QueryResult.withoutExpansion(baseQuery);
       }
 
       // Build metadata
-      List<String> efoTerms = result.expansionTerms.efo;
-      List<String> synonyms = result.expansionTerms.synonyms;
+      Set<String> efoTerms = result.expansionTerms.efo;
+      Set<String> synonyms = result.expansionTerms.synonyms;
       boolean tooMany = (efoTerms.size() + synonyms.size()) > MAX_EXPANSION_TERMS;
 
-      QueryExpansionMetadata metadata = new QueryExpansionMetadata(
-          efoTerms,
-          synonyms,
-          result.expansionTerms.term,
-          tooMany,
-          MAX_EXPANSION_TERMS
-      );
-
-      return new QueryExpansionResult(result.query, metadata);
+      return QueryResult.builder()
+          .query(result.query)
+          .expandedEfoTerms(efoTerms)
+          .expandedSynonyms(synonyms)
+          .build();
 
     } catch (Exception ex) {
       log.error("Error expanding query", ex);
-      return QueryExpansionResult.noExpansion(baseQuery);
+      return QueryResult.withoutExpansion(baseQuery);
     }
   }
 

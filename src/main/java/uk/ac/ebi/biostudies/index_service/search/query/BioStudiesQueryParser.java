@@ -33,14 +33,16 @@ public class BioStudiesQueryParser extends MultiFieldQueryParser {
   /**
    * Constructs a BioStudies-specific query parser.
    *
+   * @param fields fields to index
    * @param analyzer the analyzer to use for text processing
    * @param indexManager manager providing field type metadata
    */
   public BioStudiesQueryParser(
+      String[] fields,
       Analyzer analyzer,
       IndexManager indexManager,
       CollectionRegistryService collectionRegistryService) {
-    super(collectionRegistryService.getSearchableFields(), analyzer);
+    super(fields, analyzer);
     this.indexManager = indexManager;
     this.collectionRegistryService = collectionRegistryService;
   }

@@ -199,7 +199,7 @@ class EFOExpansionLookupIndexTest {
       // Assert
       assertNotNull(result);
       assertEquals(1, result.synonyms.size());
-      assertEquals("mammary carcinoma", result.synonyms.get(0));
+      assertEquals("mammary carcinoma", result.synonyms.toArray()[0]);
       assertEquals(1, result.efo.size());
 
       verify(indexManager).releaseSearcher(eq(IndexName.EFO), eq(efoSearcher));

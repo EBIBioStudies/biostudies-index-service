@@ -2,6 +2,7 @@ package uk.ac.ebi.biostudies.index_service.search;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * DTO representing paginated search results with facets and query expansion metadata.
@@ -28,9 +29,9 @@ public record SearchResponseDTO(
     String sortBy,
     String sortOrder,
     List<String> suggestion,
-    List<String> expandedEfoTerms,
-    List<String> expandedSynonyms,
+    Set<String> expandedEfoTerms,
+    Set<String> expandedSynonyms,
     String query,
     Map<String, List<String>> facets,
-    List<FacetDimensionDTO> facetDimensions,
-    List<HitDTO> hits) {}
+    //List<FacetDimensionDTO> facetDimensions,
+    List<SearchHit> hits) {}

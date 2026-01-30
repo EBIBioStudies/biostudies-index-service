@@ -1,7 +1,9 @@
 package uk.ac.ebi.biostudies.index_service.search.query;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -14,8 +16,8 @@ public class EFOExpansionTerms {
   String term;
 
   /** EFO ontology terms */
-  List<String> efo = new ArrayList<>();
+  Set<String> efo = new HashSet<>();
 
   /** Synonym terms */
-  List<String> synonyms = new ArrayList<>();
+  Set<String> synonyms = new HashSet<>();
 }

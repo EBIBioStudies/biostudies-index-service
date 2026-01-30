@@ -8,6 +8,7 @@ import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.SortField;
 import org.springframework.stereotype.Service;
 import uk.ac.ebi.biostudies.index_service.TaxonomyManager;
 import uk.ac.ebi.biostudies.index_service.index.IndexName;
@@ -35,6 +36,8 @@ public class SearchService {
 
   private static final String PUBLIC_COLLECTION = "public";
   private static final String COLLECTION_FACET = "collection";
+  private static final String RELEVANCE = "relevance";
+  private static final String RELEASE_DATE = "releaseDate";
   private static final int DEFAULT_FACET_LIMIT = 20;
   private static final int DEFAULT_PAGE = 1;
   private static final int DEFAULT_PAGE_SIZE = 20;
@@ -46,6 +49,7 @@ public class SearchService {
   private final LuceneQueryExecutor queryExecutor;
   private final TaxonomyManager taxonomyManager;
   private final CollectionRegistryService collectionRegistryService;
+  private final SearchSnippetExtractor snippetExtractor;
 
   public SearchService(
       QueryPreprocessor preprocessor,
@@ -54,7 +58,8 @@ public class SearchService {
       FacetService facetService,
       LuceneQueryExecutor queryExecutor,
       TaxonomyManager taxonomyManager,
-      CollectionRegistryService collectionRegistryService) {
+      CollectionRegistryService collectionRegistryService,
+      SearchSnippetExtractor snippetExtractor) {
     this.preprocessor = preprocessor;
     this.luceneQueryBuilder = luceneQueryBuilder;
     this.securityQueryBuilder = securityQueryBuilder;
@@ -62,6 +67,7 @@ public class SearchService {
     this.queryExecutor = queryExecutor;
     this.taxonomyManager = taxonomyManager;
     this.collectionRegistryService = collectionRegistryService;
+    this.snippetExtractor = snippetExtractor;
   }
 
   /**
@@ -74,11 +80,11 @@ public class SearchService {
     log.info("Searching for {}", rawRequest);
 
     try {
-      // 1. Preprocess request
+      // 1. Preprocess request (applies defaults for sort, pagination, etc.)
       SearchRequest request = preprocessor.preprocess(rawRequest);
       log.debug("Preprocessed request: {}", request);
 
-      // 2. Build base Lucene query
+      // 2. Build base Lucene query (may include EFO expansion)
       QueryResult queryResult =
           luceneQueryBuilder.buildQuery(
               request.getQuery(), request.getCollection(), request.getFields());
@@ -106,15 +112,20 @@ public class SearchService {
           pageSize);
 
       // 6. Get facets for UI
-      int facetLimit = request.getFacetLimit() != null ? request.getFacetLimit() : DEFAULT_FACET_LIMIT;
+      int facetLimit =
+          request.getFacetLimit() != null ? request.getFacetLimit() : DEFAULT_FACET_LIMIT;
       List<FacetDimensionDTO> facets =
           getFacetsForUI(request.getCollection(), drillDownQuery, facetLimit, request.getFacets());
 
-      // 7. Convert hits to DTOs
-      List<HitDTO> hits = convertToHitDTOs(paginatedResult);
+      // 7. Get hits from paginated result
+      List<SearchHit> hits = paginatedResult.hits();
+
+      // 7.5. Apply snippet extraction to content field
+      List<SearchHit> hitsWithSnippets = extractSnippets(hits, queryResult.getQuery());
+      log.debug("Extracted snippets for {} hits", hitsWithSnippets.size());
 
       // 8. Build response
-      return buildSearchResponse(request, paginatedResult, facets, hits);
+      return buildSearchResponse(request, queryResult, paginatedResult, facets, hitsWithSnippets);
 
     } catch (IOException ex) {
       log.error("IO error during search", ex);
@@ -123,6 +134,48 @@ public class SearchService {
       log.error("Unexpected error during search", ex);
       return buildErrorResponse(rawRequest, "Search failed: " + ex.getMessage());
     }
+  }
+
+  /**
+   * Extracts relevant snippets from the content field of each search hit.
+   *
+   * @param hits the original search hits with full content
+   * @param query the query to use for snippet extraction
+   * @return new list of search hits with content replaced by snippets
+   */
+  private List<SearchHit> extractSnippets(List<SearchHit> hits, Query query) {
+    return hits.stream().map(hit -> extractSnippet(hit, query)).toList();
+  }
+
+  /**
+   * Extracts a snippet from a single search hit's content field.
+   *
+   * @param hit the original search hit
+   * @param query the query to use for snippet extraction
+   * @return a new SearchHit with content replaced by a snippet
+   */
+  private SearchHit extractSnippet(SearchHit hit, Query query) {
+    String snippet =
+        snippetExtractor.extractSnippet(
+            query,
+            "content", // field name
+            hit.content(),
+            true // fragmentOnly
+            );
+
+    // Create new SearchHit with snippet instead of full content
+    return new SearchHit(
+        hit.accession(),
+        hit.type(),
+        hit.title(),
+        hit.author(),
+        hit.links(),
+        hit.files(),
+        hit.releaseDate(),
+        hit.views(),
+        hit.isPublic(),
+        snippet // replaced content
+        );
   }
 
   /**
@@ -188,20 +241,68 @@ public class SearchService {
   /**
    * Builds Lucene Sort from request parameters.
    *
-   * @param sortBy field to sort by
+   * <p>The preprocessor has already determined the sortBy and sortOrder values based on query
+   * context. This method translates them into a Lucene Sort object.
+   *
+   * <p>Supported sort fields:
+   *
+   * <ul>
+   *   <li>"relevance" - Sort by relevance score (default for searches)
+   *   <li>"releaseDate" - Sort by release date (default for browsing)
+   *   <li>Other sortable fields as configured in registry
+   * </ul>
+   *
+   * @param sortBy field to sort by (already normalized by preprocessor)
    * @param sortOrder sort order ("ascending" or "descending")
    * @return Lucene Sort object, or null for relevance sorting
    */
   private Sort buildSort(String sortBy, String sortOrder) {
-    // TODO: Implement sort building based on sortBy and sortOrder
-    // For now, return null for relevance sorting
-    if (sortBy == null || "relevance".equalsIgnoreCase(sortBy)) {
+    // Relevance sorting (null = use query score)
+    if (sortBy == null || RELEVANCE.equalsIgnoreCase(sortBy)) {
       return null;
     }
 
-    // Implement actual sort building here
-    log.warn("Sort building not yet implemented for sortBy={}, sortOrder={}", sortBy, sortOrder);
-    return null;
+    // Determine if reverse (descending = reverse in Lucene)
+    boolean reverse = "descending".equalsIgnoreCase(sortOrder);
+
+    // Build sort field based on known sortable fields
+    SortField sortField = createSortField(sortBy, reverse);
+
+    // Always add relevance as secondary sort for tie-breaking
+    return new Sort(sortField, SortField.FIELD_SCORE);
+  }
+
+  /**
+   * Creates a SortField for a given field name.
+   *
+   * <p>Maps user-facing field names to actual indexed field names and determines the appropriate
+   * Lucene sort type.
+   *
+   * @param fieldName the field to sort by
+   * @param reverse true for descending order
+   * @return configured SortField
+   */
+  private SortField createSortField(String fieldName, boolean reverse) {
+    return switch (fieldName.toLowerCase()) {
+      // Date fields (stored as long epoch millis with DocValues)
+      case "releasedate", "release_date" ->
+          new SortField("releaseDate", SortField.Type.LONG, reverse);
+      case "modificationdate", "modification_date", "modificationtime" ->
+          new SortField("modificationDate", SortField.Type.LONG, reverse);
+
+      // String fields (use sortable versions with SortedDocValues)
+      case "accession", "accno" -> new SortField("accession", SortField.Type.STRING, reverse);
+      case "title" -> new SortField("title.sort", SortField.Type.STRING, reverse);
+
+      // Numeric fields
+      case "filecount", "file_count" -> new SortField("fileCount", SortField.Type.INT, reverse);
+
+      // Default: try as string
+      default -> {
+        log.warn("Unknown sort field '{}', attempting STRING sort", fieldName);
+        yield new SortField(fieldName, SortField.Type.STRING, reverse);
+      }
+    };
   }
 
   /**
@@ -407,22 +508,18 @@ public class SearchService {
   }
 
   /**
-   * Converts paginated result to hit DTOs.
-   *
-   * @param paginatedResult the paginated search result
-   * @return list of hit DTOs
-   */
-  private List<HitDTO> convertToHitDTOs(PaginatedResult paginatedResult) {
-    // TODO: Implement conversion from ScoreDoc to HitDTO
-    // This will require accessing the index searcher to retrieve documents
-    log.warn("Hit conversion not yet implemented, returning empty list");
-    return Collections.emptyList();
-  }
-
-  /**
    * Builds search response DTO.
    *
+   * <p>Matches old behavior:
+   *
+   * <ul>
+   *   <li>Query is null when highlighting disabled (browsing mode)
+   *   <li>Facets are null when empty
+   *   <li>Includes EFO expansion terms if available
+   * </ul>
+   *
    * @param request the search request
+   * @param queryResult the query result with potential expansion terms
    * @param paginatedResult the paginated search result
    * @param facets the formatted facets
    * @param hits the converted hit DTOs
@@ -430,23 +527,31 @@ public class SearchService {
    */
   private SearchResponseDTO buildSearchResponse(
       SearchRequest request,
+      QueryResult queryResult,
       PaginatedResult paginatedResult,
       List<FacetDimensionDTO> facets,
-      List<HitDTO> hits) {
+      List<SearchHit> hits) {
+
+    // Match old behavior: query is null when highlighting disabled
+    String displayQuery = request.isHighlightingEnabled() ? request.getQuery() : null;
+
+    // Match old behavior: facets null when empty
+    Map<String, List<String>> displayFacets =
+        (request.getFacets() == null || request.getFacets().isEmpty()) ? null : request.getFacets();
 
     return new SearchResponseDTO(
         paginatedResult.page(),
         paginatedResult.pageSize(),
         paginatedResult.totalHits(),
         true, // isTotalHitsExact
-        request.getSortBy() != null ? request.getSortBy() : "relevance",
+        request.getSortBy() != null ? request.getSortBy() : RELEVANCE,
         request.getSortOrder() != null ? request.getSortOrder() : "descending",
         List.of(), // suggestions - TODO
-        List.of(), // expandedEfoTerms - TODO
-        List.of(), // expandedSynonyms - TODO
-        request.getQuery(),
-        request.getFacets() != null ? request.getFacets() : Collections.emptyMap(),
-        facets,
+        queryResult.getExpandedEfoTerms(),
+        queryResult.getExpandedSynonyms(),
+        displayQuery, // null when browsing
+        displayFacets, // null when empty
+        //facets,
         hits);
   }
 
@@ -460,19 +565,22 @@ public class SearchService {
   private SearchResponseDTO buildErrorResponse(SearchRequest request, String errorMessage) {
     log.error("Building error response: {}", errorMessage);
 
+    // Match old behavior: "*:*" becomes null
+    String displayQuery = "*:*".equals(request.getQuery()) ? null : request.getQuery();
+
     return new SearchResponseDTO(
         1,
         20,
         0L,
         true,
-        "relevance",
+        RELEVANCE,
         "descending",
         List.of(),
-        List.of(),
-        List.of(),
-        request.getQuery(),
-        Collections.emptyMap(),
-        Collections.emptyList(),
-        Collections.emptyList());
+        Set.of(), // expandedEfoTerms
+        Set.of(), // expandedSynonyms
+        displayQuery,
+        null, // facets
+        //Collections.emptyList(), // facetDimensions
+        Collections.emptyList()); // hits
   }
 }

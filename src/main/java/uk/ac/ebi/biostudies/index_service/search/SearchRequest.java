@@ -32,7 +32,7 @@ public class SearchRequest {
 
   private Map<String, List<String>> facets = new LinkedHashMap<>();
 
-  private Map<String, String> fields = new LinkedHashMap<>();
+  private Map<String, Object> fields = new LinkedHashMap<>();
 
   // Feature flags set by preprocessor
   private boolean highlightingEnabled;

@@ -1,14 +1,23 @@
 package uk.ac.ebi.biostudies.index_service.search.engine;
 
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TotalHits;
 import org.springframework.stereotype.Service;
 import uk.ac.ebi.biostudies.index_service.index.IndexName;
 import uk.ac.ebi.biostudies.index_service.index.management.IndexManager;
+import uk.ac.ebi.biostudies.index_service.search.SearchHit;
 
 /**
  * Executes Lucene queries with pagination and sorting support across managed indexes. Handles
@@ -18,24 +27,15 @@ import uk.ac.ebi.biostudies.index_service.index.management.IndexManager;
 @Service
 public class LuceneQueryExecutor {
 
-  private static final int MAX_PAGE_SIZE = 1000; // Same as legacy MAX_PAGE_SIZE
+  private static final int MAX_PAGE_SIZE = 1000;
+  private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
   private final IndexManager indexManager;
 
   public LuceneQueryExecutor(IndexManager indexManager) {
     this.indexManager = indexManager;
   }
 
-  /**
-   * Executes a Lucene query against the specified index with pagination and optional sorting.
-   *
-   * @param indexName the index to search
-   * @param query the Lucene query to execute
-   * @param page the current page number (1-based)
-   * @param pageSize the number of results per page
-   * @param sort optional sort criteria (null for relevance sorting)
-   * @return paginated search results
-   * @throws IOException if search execution fails
-   */
   public PaginatedResult execute(
       IndexName indexName, Query query, int page, int pageSize, Sort sort) throws IOException {
 
@@ -45,7 +45,7 @@ public class LuceneQueryExecutor {
       int limitedPageSize = Math.min(pageSize, MAX_PAGE_SIZE);
 
       // Calculate total documents needed (all pages up to current page)
-      int totalDocsNeeded = Math.min(page * limitedPageSize, Integer.MAX_VALUE);
+      int totalDocsNeeded = page * limitedPageSize;
 
       // Execute search
       TopDocs topDocs =
@@ -53,7 +53,22 @@ public class LuceneQueryExecutor {
               ? searcher.search(query, totalDocsNeeded, sort)
               : searcher.search(query, totalDocsNeeded);
 
-      return new PaginatedResult(topDocs, page, limitedPageSize, topDocs.totalHits.value());
+      // Calculate pagination boundaries for current page only
+      int start = (page - 1) * limitedPageSize;
+      int end = Math.min(start + limitedPageSize, topDocs.scoreDocs.length);
+
+      // Fetch documents for current page only
+      List<Document> docs = new ArrayList<>();
+      StoredFields storedFields = searcher.storedFields();
+      for (int i = start; i < end; i++) {
+        Document doc = storedFields.document(topDocs.scoreDocs[i].doc);
+        docs.add(doc);
+      }
+
+      boolean isTotalHitsExact = topDocs.totalHits.relation() == TotalHits.Relation.EQUAL_TO;
+
+      return new PaginatedResult(
+          toSearchHits(docs), page, limitedPageSize, topDocs.totalHits.value(), isTotalHitsExact);
 
     } finally {
       indexManager.releaseSearcher(indexName, searcher);
@@ -64,5 +79,34 @@ public class LuceneQueryExecutor {
   public PaginatedResult execute(IndexName indexName, Query query, int page, int pageSize)
       throws IOException {
     return execute(indexName, query, page, pageSize, null);
+  }
+
+  private List<SearchHit> toSearchHits(List<Document> docs) {
+    return docs.stream().map(this::toSearchHit).collect(Collectors.toList());
+  }
+
+  private SearchHit toSearchHit(Document doc) {
+    String releaseDateStr = doc.get("release_date");
+    if (releaseDateStr == null) {
+      throw new IllegalStateException("Missing release_date for document: " + doc.get("accession"));
+    }
+
+    LocalDate releaseDate = LocalDate.parse(releaseDateStr, DATE_FORMATTER);
+
+    return new SearchHit(
+        doc.get("accession"),
+        doc.get("type"),
+        doc.get("title"),
+        doc.get("author"),
+        parseIntSafe(doc.get("links")),
+        parseIntSafe(doc.get("files")),
+        releaseDate,
+        parseIntSafe(doc.get("views")),
+        Boolean.parseBoolean(doc.get("isPublic")),
+        doc.get("content"));
+  }
+
+  private int parseIntSafe(String value) {
+    return value != null ? Integer.parseInt(value) : 0;
   }
 }

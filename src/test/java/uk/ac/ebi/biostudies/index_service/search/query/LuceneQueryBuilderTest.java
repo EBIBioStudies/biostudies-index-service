@@ -8,6 +8,7 @@ import static org.mockito.Mockito.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
@@ -32,9 +33,9 @@ import uk.ac.ebi.biostudies.index_service.analysis.AnalyzerManager;
 import uk.ac.ebi.biostudies.index_service.config.SubCollectionConfig;
 import uk.ac.ebi.biostudies.index_service.index.LuceneIndexConfig;
 import uk.ac.ebi.biostudies.index_service.index.management.IndexManager;
+import uk.ac.ebi.biostudies.index_service.registry.model.CollectionRegistry;
 import uk.ac.ebi.biostudies.index_service.registry.model.PropertyDescriptor;
 import uk.ac.ebi.biostudies.index_service.registry.service.CollectionRegistryService;
-import uk.ac.ebi.biostudies.index_service.search.security.SecurityQueryBuilder;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("LuceneQueryBuilder Tests")
@@ -44,7 +45,6 @@ class LuceneQueryBuilderTest {
   @Mock private AnalyzerManager analyzerManager;
   @Mock private IndexManager indexManager;
   @Mock private QueryExpander queryExpander;
-  @Mock private SecurityQueryBuilder securityQueryBuilder;
   @Mock private CollectionRegistryService collectionRegistryService;
   @Mock private TaxonomyManager taxonomyManager;
   @Mock private LuceneIndexConfig indexConfig;
@@ -60,18 +60,26 @@ class LuceneQueryBuilderTest {
     PerFieldAnalyzerWrapper perFieldAnalyzer =
         new PerFieldAnalyzerWrapper(
             defaultAnalyzer, new HashMap<>() // Empty field-specific analyzers
-            );
+        );
 
     when(analyzerManager.getPerFieldAnalyzerWrapper()).thenReturn(perFieldAnalyzer);
-    when(collectionRegistryService.getSearchableFields())
-        .thenReturn(new String[] {"title", "content", "author"});
+
+    // LuceneQueryBuilder now uses indexConfig.getIndexedFieldsCache() for BioStudiesQueryParser
+    when(indexConfig.getIndexedFieldsCache()).thenReturn(new String[] {"title", "content", "author"});
+
+    // BioStudiesQueryParser consults the registry for field types (e.g. LONG range handling)
+    CollectionRegistry registry = mock(CollectionRegistry.class);
+    when(collectionRegistryService.getCurrentRegistry()).thenReturn(registry);
+    when(registry.getGlobalPropertyRegistry()).thenReturn(new HashMap<>());
+
+    // Prevent NPE if collection filter path is reached without explicit stubbing
+    when(subCollectionConfig.getChildren(anyString())).thenReturn(List.of());
 
     queryBuilder =
         new LuceneQueryBuilder(
             analyzerManager,
             indexManager,
             queryExpander,
-            securityQueryBuilder,
             collectionRegistryService,
             taxonomyManager,
             indexConfig,
@@ -89,10 +97,9 @@ class LuceneQueryBuilderTest {
       // Arrange
       String queryString = "cancer";
       Query mockQuery = new MatchAllDocsQuery();
-      QueryExpansionResult expansionResult = QueryExpansionResult.noExpansion(mockQuery);
+      QueryResult expansionResult = QueryResult.withoutExpansion(mockQuery);
 
       when(queryExpander.expand(any(Query.class))).thenReturn(expansionResult);
-      when(securityQueryBuilder.applySecurity(any())).thenReturn(mockQuery);
       when(indexConfig.getTypeFilterQuery()).thenReturn(null);
 
       // Act
@@ -100,12 +107,11 @@ class LuceneQueryBuilderTest {
 
       // Assert
       assertNotNull(result);
-      assertEquals(mockQuery, result.getQuery());
-      assertEquals(queryString, result.getOriginalQuery());
-      assertNotNull(result.getExpansionMetadata());
+      assertNotNull(result.getQuery());
+      assertNotNull(result.getExpandedEfoTerms());
+      assertNotNull(result.getExpandedSynonyms());
 
       verify(queryExpander).expand(any(Query.class));
-      verify(securityQueryBuilder).applySecurity(any());
     }
 
     @Test
@@ -113,10 +119,9 @@ class LuceneQueryBuilderTest {
     void shouldHandleEmptyQueryString() {
       // Arrange
       Query mockQuery = new MatchAllDocsQuery();
-      QueryExpansionResult expansionResult = QueryExpansionResult.noExpansion(mockQuery);
+      QueryResult expansionResult = QueryResult.withoutExpansion(mockQuery);
 
       when(queryExpander.expand(any())).thenReturn(expansionResult);
-      when(securityQueryBuilder.applySecurity(any())).thenReturn(mockQuery);
       when(indexConfig.getTypeFilterQuery()).thenReturn(null);
 
       // Act
@@ -124,7 +129,7 @@ class LuceneQueryBuilderTest {
 
       // Assert
       assertNotNull(result);
-      assertEquals("", result.getOriginalQuery());
+      assertNotNull(result.getQuery());
     }
 
     @Test
@@ -132,10 +137,9 @@ class LuceneQueryBuilderTest {
     void shouldHandleNullQueryString() {
       // Arrange
       Query mockQuery = new MatchAllDocsQuery();
-      QueryExpansionResult expansionResult = QueryExpansionResult.noExpansion(mockQuery);
+      QueryResult expansionResult = QueryResult.withoutExpansion(mockQuery);
 
       when(queryExpander.expand(any())).thenReturn(expansionResult);
-      when(securityQueryBuilder.applySecurity(any())).thenReturn(mockQuery);
       when(indexConfig.getTypeFilterQuery()).thenReturn(null);
 
       // Act
@@ -153,13 +157,15 @@ class LuceneQueryBuilderTest {
       when(failingAnalyzer.getPerFieldAnalyzerWrapper())
           .thenThrow(new RuntimeException("Parse error"));
 
+      // Ensure indexed fields are present so failure comes from analyzer/parser setup, not null fields[]
+      when(indexConfig.getIndexedFieldsCache()).thenReturn(new String[] {"title", "content", "author"});
+
       // Create a new query builder with the failing analyzer
       LuceneQueryBuilder testBuilder =
           new LuceneQueryBuilder(
-              failingAnalyzer, // ✅ Use failing analyzer
+              failingAnalyzer,
               indexManager,
               queryExpander,
-              securityQueryBuilder,
               collectionRegistryService,
               taxonomyManager,
               indexConfig,
@@ -173,45 +179,6 @@ class LuceneQueryBuilderTest {
   }
 
   @Nested
-  @DisplayName("Security Application")
-  class SecurityApplication {
-
-    @Test
-    @DisplayName("Should always apply security for normal queries")
-    void shouldAlwaysApplySecurityForNormalQueries() {
-      // Arrange
-      Query mockQuery = new MatchAllDocsQuery();
-      QueryExpansionResult expansionResult = QueryExpansionResult.noExpansion(mockQuery);
-
-      when(queryExpander.expand(any())).thenReturn(expansionResult);
-      when(securityQueryBuilder.applySecurity(any())).thenReturn(mockQuery);
-      when(indexConfig.getTypeFilterQuery()).thenReturn(null);
-
-      // Act
-      queryBuilder.buildQuery("cancer", null, null);
-
-      // Assert
-      verify(securityQueryBuilder, times(1)).applySecurity(any());
-    }
-
-    @Test
-    @DisplayName("Should not apply security for unsecured queries")
-    void shouldNotApplySecurityForUnsecuredQueries() {
-      // Arrange
-      Query mockQuery = new MatchAllDocsQuery();
-      QueryExpansionResult expansionResult = QueryExpansionResult.noExpansion(mockQuery);
-
-      when(queryExpander.expand(any())).thenReturn(expansionResult);
-
-      // Act
-      queryBuilder.buildUnsecuredQuery("cancer", null);
-
-      // Assert
-      verify(securityQueryBuilder, never()).applySecurity(any());
-    }
-  }
-
-  @Nested
   @DisplayName("Query Expansion")
   class QueryExpansion {
 
@@ -220,27 +187,53 @@ class LuceneQueryBuilderTest {
     void shouldExpandQueryWithEFOTerms() {
       // Arrange
       Query mockQuery = new MatchAllDocsQuery();
-      QueryExpansionMetadata metadata =
-          new QueryExpansionMetadata(
-              List.of("EFO_0001", "EFO_0002"),
-              List.of("synonym1", "synonym2"),
-              "cancer",
-              false,
-              100);
-      QueryExpansionResult expansionResult = new QueryExpansionResult(mockQuery, metadata);
+      Set<String> efoTerms = Set.of("EFO_0001", "EFO_0002");
+      Set<String> synonyms = Set.of("synonym1", "synonym2");
+
+      QueryResult expansionResult = QueryResult.builder()
+          .query(mockQuery)
+          .expandedEfoTerms(efoTerms)
+          .expandedSynonyms(synonyms)
+          .build();
 
       when(queryExpander.expand(any())).thenReturn(expansionResult);
-      when(securityQueryBuilder.applySecurity(any())).thenReturn(mockQuery);
       when(indexConfig.getTypeFilterQuery()).thenReturn(null);
 
       // Act
       QueryResult result = queryBuilder.buildQuery("cancer", null, null);
 
       // Assert
-      assertNotNull(result.getExpansionMetadata());
-      assertEquals(2, result.getExpansionMetadata().getEfoTerms().size());
-      assertEquals(2, result.getExpansionMetadata().getSynonyms().size());
-      assertTrue(result.getExpansionMetadata().isExpanded());
+      assertNotNull(result);
+      assertEquals(2, result.getExpandedEfoTerms().size());
+      assertEquals(2, result.getExpandedSynonyms().size());
+      assertTrue(result.getExpandedEfoTerms().contains("EFO_0001"));
+      assertTrue(result.getExpandedSynonyms().contains("synonym1"));
+    }
+
+    @Test
+    @DisplayName("Should handle null query expander gracefully")
+    void shouldHandleNullQueryExpander() {
+      // Arrange - Create builder with null expander
+      LuceneQueryBuilder testBuilder =
+          new LuceneQueryBuilder(
+              analyzerManager,
+              indexManager,
+              null, // null expander
+              collectionRegistryService,
+              taxonomyManager,
+              indexConfig,
+              subCollectionConfig,
+              facetService);
+
+      when(indexConfig.getTypeFilterQuery()).thenReturn(null);
+
+      // Act
+      QueryResult result = testBuilder.buildQuery("cancer", null, null);
+
+      // Assert
+      assertNotNull(result);
+      assertTrue(result.getExpandedEfoTerms().isEmpty());
+      assertTrue(result.getExpandedSynonyms().isEmpty());
     }
 
     @Test
@@ -248,9 +241,15 @@ class LuceneQueryBuilderTest {
     void shouldHandleExpansionFailure() {
       // Arrange
       when(queryExpander.expand(any())).thenThrow(new RuntimeException("Expansion failed"));
+      when(indexConfig.getTypeFilterQuery()).thenReturn(null);
 
-      // Act & Assert
-      assertThrows(QueryBuildException.class, () -> queryBuilder.buildQuery("cancer", null, null));
+      // Act
+      QueryResult result = queryBuilder.buildQuery("cancer", null, null);
+
+      // Assert - Should return query with no expansion
+      assertNotNull(result);
+      assertTrue(result.getExpandedEfoTerms().isEmpty());
+      assertTrue(result.getExpandedSynonyms().isEmpty());
     }
   }
 
@@ -262,15 +261,14 @@ class LuceneQueryBuilderTest {
     @DisplayName("Should apply field filters from Map")
     void shouldApplyFieldFiltersFromMap() {
       // Arrange
-      Map<String, String> fields = new HashMap<>();
+      Map<String, Object> fields = new HashMap<>();
       fields.put("author", "smith");
       fields.put("title", "cancer");
 
       Query mockQuery = new MatchAllDocsQuery();
-      QueryExpansionResult expansionResult = QueryExpansionResult.noExpansion(mockQuery);
+      QueryResult expansionResult = QueryResult.withoutExpansion(mockQuery);
 
       when(queryExpander.expand(any())).thenReturn(expansionResult);
-      when(securityQueryBuilder.applySecurity(any())).thenReturn(mockQuery);
       when(indexConfig.getTypeFilterQuery()).thenReturn(null);
 
       // Act
@@ -284,15 +282,14 @@ class LuceneQueryBuilderTest {
     @DisplayName("Should skip empty field values")
     void shouldSkipEmptyFieldValues() {
       // Arrange
-      Map<String, String> fields = new HashMap<>();
+      Map<String, Object> fields = new HashMap<>();
       fields.put("author", "");
       fields.put("title", "cancer");
 
       Query mockQuery = new MatchAllDocsQuery();
-      QueryExpansionResult expansionResult = QueryExpansionResult.noExpansion(mockQuery);
+      QueryResult expansionResult = QueryResult.withoutExpansion(mockQuery);
 
       when(queryExpander.expand(any())).thenReturn(expansionResult);
-      when(securityQueryBuilder.applySecurity(any())).thenReturn(mockQuery);
       when(indexConfig.getTypeFilterQuery()).thenReturn(null);
 
       // Act
@@ -306,15 +303,14 @@ class LuceneQueryBuilderTest {
     @DisplayName("Should skip null field values")
     void shouldSkipNullFieldValues() {
       // Arrange
-      Map<String, String> fields = new HashMap<>();
+      Map<String, Object> fields = new HashMap<>();
       fields.put("author", null);
       fields.put("title", "cancer");
 
       Query mockQuery = new MatchAllDocsQuery();
-      QueryExpansionResult expansionResult = QueryExpansionResult.noExpansion(mockQuery);
+      QueryResult expansionResult = QueryResult.withoutExpansion(mockQuery);
 
       when(queryExpander.expand(any())).thenReturn(expansionResult);
-      when(securityQueryBuilder.applySecurity(any())).thenReturn(mockQuery);
       when(indexConfig.getTypeFilterQuery()).thenReturn(null);
 
       // Act
@@ -328,15 +324,14 @@ class LuceneQueryBuilderTest {
     @DisplayName("Should skip 'query' field in filters")
     void shouldSkipQueryField() {
       // Arrange
-      Map<String, String> fields = new HashMap<>();
+      Map<String, Object> fields = new HashMap<>();
       fields.put("query", "should-be-ignored");
       fields.put("author", "smith");
 
       Query mockQuery = new MatchAllDocsQuery();
-      QueryExpansionResult expansionResult = QueryExpansionResult.noExpansion(mockQuery);
+      QueryResult expansionResult = QueryResult.withoutExpansion(mockQuery);
 
       when(queryExpander.expand(any())).thenReturn(expansionResult);
-      when(securityQueryBuilder.applySecurity(any())).thenReturn(mockQuery);
       when(indexConfig.getTypeFilterQuery()).thenReturn(null);
 
       // Act
@@ -351,10 +346,9 @@ class LuceneQueryBuilderTest {
     void shouldHandleNullFields() {
       // Arrange
       Query mockQuery = new MatchAllDocsQuery();
-      QueryExpansionResult expansionResult = QueryExpansionResult.noExpansion(mockQuery);
+      QueryResult expansionResult = QueryResult.withoutExpansion(mockQuery);
 
       when(queryExpander.expand(any())).thenReturn(expansionResult);
-      when(securityQueryBuilder.applySecurity(any())).thenReturn(mockQuery);
       when(indexConfig.getTypeFilterQuery()).thenReturn(null);
 
       // Act
@@ -368,13 +362,12 @@ class LuceneQueryBuilderTest {
     @DisplayName("Should handle empty fields map")
     void shouldHandleEmptyFields() {
       // Arrange
-      Map<String, String> fields = new HashMap<>();
+      Map<String, Object> fields = new HashMap<>();
 
       Query mockQuery = new MatchAllDocsQuery();
-      QueryExpansionResult expansionResult = QueryExpansionResult.noExpansion(mockQuery);
+      QueryResult expansionResult = QueryResult.withoutExpansion(mockQuery);
 
       when(queryExpander.expand(any())).thenReturn(expansionResult);
-      when(securityQueryBuilder.applySecurity(any())).thenReturn(mockQuery);
       when(indexConfig.getTypeFilterQuery()).thenReturn(null);
 
       // Act
@@ -385,18 +378,17 @@ class LuceneQueryBuilderTest {
     }
 
     @Test
-    @DisplayName("Should log warning for failed field filters")
-    void shouldLogWarningForFailedFieldFilters() {
+    @DisplayName("Should handle non-string field values")
+    void shouldHandleNonStringFieldValues() {
       // Arrange
-      Map<String, String> fields = new HashMap<>();
-      fields.put("invalid:field", "value"); // Invalid field name
-      fields.put("author", "smith");
+      Map<String, Object> fields = new HashMap<>();
+      fields.put("count", 42);
+      fields.put("active", true);
 
       Query mockQuery = new MatchAllDocsQuery();
-      QueryExpansionResult expansionResult = QueryExpansionResult.noExpansion(mockQuery);
+      QueryResult expansionResult = QueryResult.withoutExpansion(mockQuery);
 
       when(queryExpander.expand(any())).thenReturn(expansionResult);
-      when(securityQueryBuilder.applySecurity(any())).thenReturn(mockQuery);
       when(indexConfig.getTypeFilterQuery()).thenReturn(null);
 
       // Act
@@ -404,7 +396,6 @@ class LuceneQueryBuilderTest {
 
       // Assert
       assertNotNull(result);
-      // Check logs for warning about failed fields
     }
   }
 
@@ -420,10 +411,9 @@ class LuceneQueryBuilderTest {
       when(indexConfig.getTypeFilterQuery()).thenReturn(typeFilter);
 
       Query mockQuery = new MatchAllDocsQuery();
-      QueryExpansionResult expansionResult = QueryExpansionResult.noExpansion(mockQuery);
+      QueryResult expansionResult = QueryResult.withoutExpansion(mockQuery);
 
       when(queryExpander.expand(any())).thenReturn(expansionResult);
-      when(securityQueryBuilder.applySecurity(any())).thenAnswer(i -> i.getArgument(0));
 
       // Act
       QueryResult result = queryBuilder.buildQuery("cancer", null, null);
@@ -442,10 +432,9 @@ class LuceneQueryBuilderTest {
       when(indexConfig.getTypeFilterQuery()).thenReturn(null);
 
       Query mockQuery = new MatchAllDocsQuery();
-      QueryExpansionResult expansionResult = QueryExpansionResult.noExpansion(mockQuery);
+      QueryResult expansionResult = QueryResult.withoutExpansion(mockQuery);
 
       when(queryExpander.expand(any())).thenReturn(expansionResult);
-      when(securityQueryBuilder.applySecurity(any())).thenAnswer(i -> i.getArgument(0));
 
       // Act
       QueryResult result = queryBuilder.buildQuery("cancer", null, null);
@@ -459,10 +448,9 @@ class LuceneQueryBuilderTest {
     void shouldSkipTypeFilterWhenAlreadyInQuery() {
       // Arrange
       Query mockQuery = new MatchAllDocsQuery();
-      QueryExpansionResult expansionResult = QueryExpansionResult.noExpansion(mockQuery);
+      QueryResult expansionResult = QueryResult.withoutExpansion(mockQuery);
 
       when(queryExpander.expand(any())).thenReturn(expansionResult);
-      when(securityQueryBuilder.applySecurity(any())).thenReturn(mockQuery);
 
       // Act
       QueryResult result = queryBuilder.buildQuery("type:study", null, null);
@@ -476,14 +464,13 @@ class LuceneQueryBuilderTest {
     @DisplayName("Should skip type filter when type in field filters")
     void shouldSkipTypeFilterWhenInFieldFilters() {
       // Arrange
-      Map<String, String> fields = new HashMap<>();
+      Map<String, Object> fields = new HashMap<>();
       fields.put("type", "study");
 
       Query mockQuery = new MatchAllDocsQuery();
-      QueryExpansionResult expansionResult = QueryExpansionResult.noExpansion(mockQuery);
+      QueryResult expansionResult = QueryResult.withoutExpansion(mockQuery);
 
       when(queryExpander.expand(any())).thenReturn(expansionResult);
-      when(securityQueryBuilder.applySecurity(any())).thenReturn(mockQuery);
 
       // Act
       QueryResult result = queryBuilder.buildQuery("cancer", null, fields);
@@ -508,25 +495,17 @@ class LuceneQueryBuilderTest {
       when(collectionRegistryService.getPropertyDescriptor(anyString()))
           .thenReturn(facetDescriptor);
 
-      // Create a real FacetsConfig for testing
-      FacetsConfig facetsConfig = new org.apache.lucene.facet.FacetsConfig();
+      FacetsConfig facetsConfig = new FacetsConfig();
       when(taxonomyManager.getFacetsConfig()).thenReturn(facetsConfig);
       when(subCollectionConfig.getChildren(collection)).thenReturn(List.of());
 
-      // ✅ Mock facetService to return a DrillDownQuery
       when(facetService.addFacetDrillDownFilters(any(), any(), any()))
-          .thenAnswer(
-              invocation -> {
-                org.apache.lucene.facet.DrillDownQuery ddq =
-                    new org.apache.lucene.facet.DrillDownQuery(facetsConfig);
-                return ddq;
-              });
+          .thenAnswer(invocation -> new DrillDownQuery(facetsConfig));
 
       Query mockQuery = new MatchAllDocsQuery();
-      QueryExpansionResult expansionResult = QueryExpansionResult.noExpansion(mockQuery);
+      QueryResult expansionResult = QueryResult.withoutExpansion(mockQuery);
 
       when(queryExpander.expand(any())).thenReturn(expansionResult);
-      when(securityQueryBuilder.applySecurity(any())).thenAnswer(i -> i.getArgument(0));
       when(indexConfig.getTypeFilterQuery()).thenReturn(null);
 
       // Act
@@ -551,23 +530,16 @@ class LuceneQueryBuilderTest {
 
       when(subCollectionConfig.getChildren(collection)).thenReturn(subcollections);
 
-      // Create a real FacetsConfig for testing
       FacetsConfig facetsConfig = new FacetsConfig();
       when(taxonomyManager.getFacetsConfig()).thenReturn(facetsConfig);
 
-      // Mock facetService to return a DrillDownQuery
       when(facetService.addFacetDrillDownFilters(any(), any(), any()))
-          .thenAnswer(
-              invocation -> {
-                DrillDownQuery ddq = new DrillDownQuery(facetsConfig);
-                return ddq;
-              });
+          .thenAnswer(invocation -> new DrillDownQuery(facetsConfig));
 
       Query mockQuery = new MatchAllDocsQuery();
-      QueryExpansionResult expansionResult = QueryExpansionResult.noExpansion(mockQuery);
+      QueryResult expansionResult = QueryResult.withoutExpansion(mockQuery);
 
       when(queryExpander.expand(any())).thenReturn(expansionResult);
-      when(securityQueryBuilder.applySecurity(any())).thenReturn(mockQuery);
       when(indexConfig.getTypeFilterQuery()).thenReturn(null);
 
       // Act
@@ -584,10 +556,9 @@ class LuceneQueryBuilderTest {
     void shouldSkipCollectionFilterForPublic() {
       // Arrange
       Query mockQuery = new MatchAllDocsQuery();
-      QueryExpansionResult expansionResult = QueryExpansionResult.noExpansion(mockQuery);
+      QueryResult expansionResult = QueryResult.withoutExpansion(mockQuery);
 
       when(queryExpander.expand(any())).thenReturn(expansionResult);
-      when(securityQueryBuilder.applySecurity(any())).thenReturn(mockQuery);
       when(indexConfig.getTypeFilterQuery()).thenReturn(null);
 
       // Act
@@ -603,10 +574,9 @@ class LuceneQueryBuilderTest {
     void shouldSkipCollectionFilterForNull() {
       // Arrange
       Query mockQuery = new MatchAllDocsQuery();
-      QueryExpansionResult expansionResult = QueryExpansionResult.noExpansion(mockQuery);
+      QueryResult expansionResult = QueryResult.withoutExpansion(mockQuery);
 
       when(queryExpander.expand(any())).thenReturn(expansionResult);
-      when(securityQueryBuilder.applySecurity(any())).thenReturn(mockQuery);
       when(indexConfig.getTypeFilterQuery()).thenReturn(null);
 
       // Act
@@ -622,10 +592,9 @@ class LuceneQueryBuilderTest {
     void shouldSkipCollectionFilterForEmpty() {
       // Arrange
       Query mockQuery = new MatchAllDocsQuery();
-      QueryExpansionResult expansionResult = QueryExpansionResult.noExpansion(mockQuery);
+      QueryResult expansionResult = QueryResult.withoutExpansion(mockQuery);
 
       when(queryExpander.expand(any())).thenReturn(expansionResult);
-      when(securityQueryBuilder.applySecurity(any())).thenReturn(mockQuery);
       when(indexConfig.getTypeFilterQuery()).thenReturn(null);
 
       // Act
@@ -643,10 +612,9 @@ class LuceneQueryBuilderTest {
       when(collectionRegistryService.getPropertyDescriptor(anyString())).thenReturn(null);
 
       Query mockQuery = new MatchAllDocsQuery();
-      QueryExpansionResult expansionResult = QueryExpansionResult.noExpansion(mockQuery);
+      QueryResult expansionResult = QueryResult.withoutExpansion(mockQuery);
 
       when(queryExpander.expand(any())).thenReturn(expansionResult);
-      when(securityQueryBuilder.applySecurity(any())).thenReturn(mockQuery);
       when(indexConfig.getTypeFilterQuery()).thenReturn(null);
 
       // Act
@@ -667,10 +635,9 @@ class LuceneQueryBuilderTest {
       when(taxonomyManager.getFacetsConfig()).thenReturn(null);
 
       Query mockQuery = new MatchAllDocsQuery();
-      QueryExpansionResult expansionResult = QueryExpansionResult.noExpansion(mockQuery);
+      QueryResult expansionResult = QueryResult.withoutExpansion(mockQuery);
 
       when(queryExpander.expand(any())).thenReturn(expansionResult);
-      when(securityQueryBuilder.applySecurity(any())).thenReturn(mockQuery);
       when(indexConfig.getTypeFilterQuery()).thenReturn(null);
 
       // Act
@@ -692,7 +659,7 @@ class LuceneQueryBuilderTest {
       // Arrange
       String queryString = "cancer";
       String collection = "bioimages";
-      Map<String, String> fields = new HashMap<>();
+      Map<String, Object> fields = new HashMap<>();
       fields.put("author", "smith");
 
       Query typeFilter = new TermQuery(new Term("type", "collection"));
@@ -704,39 +671,29 @@ class LuceneQueryBuilderTest {
 
       when(subCollectionConfig.getChildren(collection)).thenReturn(List.of());
 
-      // Create a real FacetsConfig for testing
       FacetsConfig facetsConfig = new FacetsConfig();
       when(taxonomyManager.getFacetsConfig()).thenReturn(facetsConfig);
-      when(subCollectionConfig.getChildren(collection)).thenReturn(List.of());
 
-      // Mock facetService to return a DrillDownQuery
       when(facetService.addFacetDrillDownFilters(any(), any(), any()))
-          .thenAnswer(
-              invocation -> {
-                DrillDownQuery ddq = new DrillDownQuery(facetsConfig);
-                return ddq;
-              });
+          .thenAnswer(invocation -> new DrillDownQuery(facetsConfig));
 
       Query mockQuery = new MatchAllDocsQuery();
-      QueryExpansionResult expansionResult = QueryExpansionResult.noExpansion(mockQuery);
+      QueryResult expansionResult = QueryResult.withoutExpansion(mockQuery);
 
       when(queryExpander.expand(any())).thenReturn(expansionResult);
-      when(securityQueryBuilder.applySecurity(any())).thenReturn(mockQuery);
 
       // Act
       QueryResult result = queryBuilder.buildQuery(queryString, collection, fields);
 
       // Assert
       assertNotNull(result);
-      assertEquals(queryString, result.getOriginalQuery());
 
       // Verify order of operations
-      var inOrder = inOrder(queryExpander, indexConfig, facetService, securityQueryBuilder);
+      var inOrder = inOrder(queryExpander, indexConfig, facetService);
 
       inOrder.verify(queryExpander).expand(any());
       inOrder.verify(indexConfig).getTypeFilterQuery();
       inOrder.verify(facetService).addFacetDrillDownFilters(any(), any(), any());
-      inOrder.verify(securityQueryBuilder).applySecurity(any());
     }
   }
 
@@ -745,29 +702,11 @@ class LuceneQueryBuilderTest {
   class UnsecuredQueryBuilding {
 
     @Test
-    @DisplayName("Should skip security for unsecured queries")
-    void shouldSkipSecurityForUnsecuredQueries() {
-      // Arrange
-      Query mockQuery = new MatchAllDocsQuery();
-      QueryExpansionResult expansionResult = QueryExpansionResult.noExpansion(mockQuery);
-
-      when(queryExpander.expand(any())).thenReturn(expansionResult);
-
-      // Act
-      QueryResult result = queryBuilder.buildUnsecuredQuery("cancer", null);
-
-      // Assert
-      assertNotNull(result);
-      verify(securityQueryBuilder, never()).applySecurity(any());
-      verify(queryExpander).expand(any());
-    }
-
-    @Test
     @DisplayName("Should skip type and collection filters for unsecured queries")
     void shouldSkipFiltersForUnsecuredQueries() {
       // Arrange
       Query mockQuery = new MatchAllDocsQuery();
-      QueryExpansionResult expansionResult = QueryExpansionResult.noExpansion(mockQuery);
+      QueryResult expansionResult = QueryResult.withoutExpansion(mockQuery);
 
       when(queryExpander.expand(any())).thenReturn(expansionResult);
 
@@ -784,11 +723,11 @@ class LuceneQueryBuilderTest {
     @DisplayName("Should apply field filters for unsecured queries")
     void shouldApplyFieldFiltersForUnsecuredQueries() {
       // Arrange
-      Map<String, String> fields = new HashMap<>();
+      Map<String, Object> fields = new HashMap<>();
       fields.put("author", "smith");
 
       Query mockQuery = new MatchAllDocsQuery();
-      QueryExpansionResult expansionResult = QueryExpansionResult.noExpansion(mockQuery);
+      QueryResult expansionResult = QueryResult.withoutExpansion(mockQuery);
 
       when(queryExpander.expand(any())).thenReturn(expansionResult);
 
@@ -797,6 +736,8 @@ class LuceneQueryBuilderTest {
 
       // Assert
       assertNotNull(result);
+      assertTrue(result.getExpandedEfoTerms().isEmpty());
+      assertTrue(result.getExpandedSynonyms().isEmpty());
     }
   }
 }

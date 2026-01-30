@@ -87,8 +87,8 @@ public class FacetService {
   /**
    * Retrieves facet results for a drill-down query.
    *
-   * <p>Executes the query with all filters applied, so facet counts reflect
-   * the current filter selection (dependent facet counts).
+   * <p>Executes the query with all filters applied, so facet counts reflect the current filter
+   * selection (dependent facet counts).
    *
    * @param drillDownQuery the drill-down query with applied facet filters
    * @param limit maximum number of top children to retrieve per dimension
@@ -118,10 +118,7 @@ public class FacetService {
       // Build state for sorted set doc values facets
       FacetsConfig facetsConfig = taxonomyManager.getFacetsConfig();
       SortedSetDocValuesReaderState state =
-          new DefaultSortedSetDocValuesReaderState(
-              indexSearcher.getIndexReader(),
-              facetsConfig
-          );
+          new DefaultSortedSetDocValuesReaderState(indexSearcher.getIndexReader(), facetsConfig);
 
       // Build facets from filtered results
       Facets facets = new SortedSetDocValuesFacetCounts(state, facetsCollector);

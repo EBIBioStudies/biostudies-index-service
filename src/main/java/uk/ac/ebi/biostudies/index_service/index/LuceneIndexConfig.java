@@ -12,7 +12,6 @@ import org.apache.lucene.search.Query;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
-import uk.ac.ebi.biostudies.index_service.analysis.analyzers.AttributeFieldAnalyzer;
 
 /**
  * Configuration component responsible for managing Lucene index settings including:
@@ -46,11 +45,25 @@ public class LuceneIndexConfig {
   @Value("${indexer.excluded-document-types:}")
   private String excludedDocumentTypes;
 
+  @Value("${indexer.fields:}")
+  private String indexedFields;
+
+  @Getter
+  @Value("${indexer.default-field:content}")
+  private String defaultField;
+
+  @Getter
+  @Value("${indexer.search-snippet-fragment-size:300}")
+  private int searchSnippetFragmentSize;
+
   /**
    * Parsed set of stop words for efficient lookup during analysis.
    */
   @Getter
   private CharArraySet stopWordsCache;
+
+  @Getter
+  private String[] indexedFieldsCache;
 
   /**
    * Parsed Lucene query for filtering out excluded document types.
@@ -67,6 +80,7 @@ public class LuceneIndexConfig {
   public void init() {
     initStopWords();
     initTypeFilterQuery();
+    initIndexedFields();
   }
 
   /**
@@ -105,6 +119,17 @@ public class LuceneIndexConfig {
       log.error("Failed to parse excluded document types: {}", excludedDocumentTypes, e);
       throw new IllegalStateException(
           "Invalid type filter configuration: " + excludedDocumentTypes, e);
+    }
+  }
+
+  private void initIndexedFields() {
+    if (indexedFields != null && !indexedFields.isEmpty()) {
+      String[] fieldsArray = indexedFields.split(",");
+      indexedFieldsCache = fieldsArray;
+      log.info("Initialized indexed fields cache with {} fields", fieldsArray.length);
+    } else {
+      indexedFieldsCache = new String[0];
+      log.warn("No indexed fields configured");
     }
   }
 

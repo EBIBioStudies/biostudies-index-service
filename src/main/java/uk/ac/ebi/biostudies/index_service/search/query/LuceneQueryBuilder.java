@@ -20,7 +20,6 @@ import uk.ac.ebi.biostudies.index_service.index.management.IndexManager;
 import uk.ac.ebi.biostudies.index_service.registry.model.FieldName;
 import uk.ac.ebi.biostudies.index_service.registry.model.PropertyDescriptor;
 import uk.ac.ebi.biostudies.index_service.registry.service.CollectionRegistryService;
-import uk.ac.ebi.biostudies.index_service.search.security.SecurityQueryBuilder;
 
 /**
  * Builds secure, executable Lucene queries from user input.
@@ -29,14 +28,13 @@ import uk.ac.ebi.biostudies.index_service.search.security.SecurityQueryBuilder;
  *
  * <ol>
  *   <li>Parse base query string
- *   <li>Expand with EFO terms and synonyms
+ *   <li>Expand with EFO terms and synonyms (optional)
  *   <li>Apply field-specific filters (MUST clauses)
  *   <li>Apply type exclusion filters (MUST_NOT clauses)
  *   <li>Apply collection hierarchy filters (facet drill-down)
- *   <li>Apply security constraints (user permissions)
  * </ol>
  *
- * <p>Each step is optional and depends on the input parameters and configuration.
+ * <p>Note: Security constraints should be applied separately by the caller.
  */
 @Slf4j
 @Service
@@ -50,7 +48,6 @@ public class LuceneQueryBuilder {
   private final AnalyzerManager analyzerManager;
   private final IndexManager indexManager;
   private final QueryExpander queryExpander;
-  private final SecurityQueryBuilder securityQueryBuilder;
   private final CollectionRegistryService collectionRegistryService;
   private final TaxonomyManager taxonomyManager;
   private final LuceneIndexConfig indexConfig;
@@ -61,7 +58,6 @@ public class LuceneQueryBuilder {
       AnalyzerManager analyzerManager,
       IndexManager indexManager,
       QueryExpander queryExpander,
-      SecurityQueryBuilder securityQueryBuilder,
       CollectionRegistryService collectionRegistryService,
       TaxonomyManager taxonomyManager,
       LuceneIndexConfig indexConfig,
@@ -70,7 +66,6 @@ public class LuceneQueryBuilder {
     this.analyzerManager = analyzerManager;
     this.indexManager = indexManager;
     this.queryExpander = queryExpander;
-    this.securityQueryBuilder = securityQueryBuilder;
     this.collectionRegistryService = collectionRegistryService;
     this.taxonomyManager = taxonomyManager;
     this.indexConfig = indexConfig;
@@ -79,15 +74,16 @@ public class LuceneQueryBuilder {
   }
 
   /**
-   * Builds a complete, secure query from user input. Always applies security constraints based on
-   * the current user context.
+   * Builds a complete query from user input.
+   *
+   * <p>Note: Security constraints should be applied separately by the caller.
    *
    * @param queryString the user's search query (can be empty for match-all)
    * @param collection optional collection filter
    * @param fields optional field-specific filters
    * @return query result containing the Lucene query and expansion metadata
    */
-  public QueryResult buildQuery(String queryString, String collection, Map<String, String> fields) {
+  public QueryResult buildQuery(String queryString, String collection, Map<String, Object> fields) {
     log.debug(
         "Building query: query='{}', collection='{}', fields='{}'",
         queryString,
@@ -98,9 +94,9 @@ public class LuceneQueryBuilder {
       // 1. Parse base query
       Query baseQuery = parseQuery(queryString);
 
-      // 2. Expand query (EFO terms, synonyms)
-      QueryExpansionResult expansionResult = queryExpander.expand(baseQuery);
-      Query expandedQuery = expansionResult.getExpandedQuery();
+      // 2. Expand query (EFO terms, synonyms) if expander is available
+      QueryResult expansionResult = expandQuery(baseQuery);
+      Query expandedQuery = expansionResult.getQuery();
 
       // 3. Apply field filters
       if (fields != null && !fields.isEmpty()) {
@@ -117,12 +113,14 @@ public class LuceneQueryBuilder {
         expandedQuery = applyCollectionFilter(expandedQuery, collection.toLowerCase());
       }
 
-      // 6. Apply security constraints
-      Query secureQuery = securityQueryBuilder.applySecurity(expandedQuery);
+      log.trace("Built Lucene query (before security): {}", expandedQuery);
 
-      log.trace("Final Lucene query: {}", secureQuery);
-
-      return new QueryResult(secureQuery, expansionResult.getMetadata(), queryString);
+      // Build QueryResult with expansion terms
+      return QueryResult.builder()
+          .query(expandedQuery)
+          .expandedEfoTerms(expansionResult.getExpandedEfoTerms())
+          .expandedSynonyms(expansionResult.getExpandedSynonyms())
+          .build();
 
     } catch (Exception ex) {
       log.error("Error building query: {}", queryString, ex);
@@ -131,26 +129,31 @@ public class LuceneQueryBuilder {
   }
 
   /**
-   * Builds an unsecured query for system/admin use only. WARNING: Should only be used for internal
-   * operations, not user-facing searches.
+   * Builds an unsecured query for system/admin use only.
+   *
+   * <p>WARNING: Should only be used for internal operations, not user-facing searches.
    *
    * @param queryString the search query
    * @param fields optional field-specific filters
-   * @return query result without security constraints
+   * @return query result without security constraints or collection filters
    */
-  public QueryResult buildUnsecuredQuery(String queryString, Map<String, String> fields) {
+  public QueryResult buildUnsecuredQuery(String queryString, Map<String, Object> fields) {
     log.warn("Building UNSECURED query - should only be used for system operations");
 
     try {
       Query baseQuery = parseQuery(queryString);
-      QueryExpansionResult expansionResult = queryExpander.expand(baseQuery);
-      Query expandedQuery = expansionResult.getExpandedQuery();
+      QueryResult expansionResult = expandQuery(baseQuery);
+      Query expandedQuery = expansionResult.getQuery();
 
       if (fields != null && !fields.isEmpty()) {
         expandedQuery = applyFieldFilters(expandedQuery, fields);
       }
 
-      return new QueryResult(expandedQuery, expansionResult.getMetadata(), queryString);
+      return QueryResult.builder()
+          .query(expandedQuery)
+          .expandedEfoTerms(expansionResult.getExpandedEfoTerms())
+          .expandedSynonyms(expansionResult.getExpandedSynonyms())
+          .build();
 
     } catch (Exception ex) {
       log.error("Error building unsecured query: {}", queryString, ex);
@@ -168,7 +171,28 @@ public class LuceneQueryBuilder {
   /** Creates a configured query parser instance. */
   private QueryParser createQueryParser() {
     Analyzer analyzer = analyzerManager.getPerFieldAnalyzerWrapper();
-    return new BioStudiesQueryParser(analyzer, indexManager, collectionRegistryService);
+    return new BioStudiesQueryParser(
+        indexConfig.getIndexedFieldsCache(), analyzer, indexManager, collectionRegistryService);
+  }
+
+  /**
+   * Expands the query with EFO terms and synonyms if query expander is available.
+   *
+   * @param baseQuery the base query to expand
+   * @return expansion result with expanded query and metadata
+   */
+  private QueryResult expandQuery(Query baseQuery) {
+    if (queryExpander == null) {
+      log.debug("Query expander not available, skipping expansion");
+      return QueryResult.withoutExpansion(baseQuery);
+    }
+
+    try {
+      return queryExpander.expand(baseQuery);
+    } catch (Exception ex) {
+      log.warn("Query expansion failed, using original query", ex);
+      return QueryResult.withoutExpansion(baseQuery);
+    }
   }
 
   /**
@@ -176,10 +200,10 @@ public class LuceneQueryBuilder {
    * pair.
    *
    * @param baseQuery the base query to filter
-   * @param fields key-value: field name -> field value
+   * @param fields key-value pairs of field name -> field value
    * @return query with field filters applied
    */
-  private Query applyFieldFilters(Query baseQuery, Map<String, String> fields) {
+  private Query applyFieldFilters(Query baseQuery, Map<String, Object> fields) {
     QueryParser parser = createQueryParser();
     BooleanQuery.Builder builder = new BooleanQuery.Builder();
     builder.add(baseQuery, BooleanClause.Occur.MUST);
@@ -189,7 +213,6 @@ public class LuceneQueryBuilder {
     fields.forEach(
         (fieldName, fieldValue) -> {
           try {
-
             // Skip special fields
             if (fieldName == null
                 || fieldName.isEmpty()
@@ -197,14 +220,20 @@ public class LuceneQueryBuilder {
               return;
             }
 
-            if (fieldValue == null || fieldValue.isEmpty()) {
+            if (fieldValue == null) {
               return;
             }
 
-            Query fieldQuery = parser.parse(fieldName + ":" + fieldValue);
+            // Convert value to string
+            String valueStr = fieldValue.toString();
+            if (valueStr.isEmpty()) {
+              return;
+            }
+
+            Query fieldQuery = parser.parse(fieldName + ":" + valueStr);
             builder.add(fieldQuery, BooleanClause.Occur.MUST);
 
-            log.debug("Applied field filter: {}:{}", fieldName, fieldValue);
+            log.debug("Applied field filter: {}:{}", fieldName, valueStr);
 
           } catch (Exception e) {
             log.error("Error applying field filter: {} = {}", fieldName, fieldValue, e);
@@ -260,7 +289,7 @@ public class LuceneQueryBuilder {
         collectionRegistryService.getPropertyDescriptor(FieldName.FACET_COLLECTION.getName());
 
     if (facetDescriptor == null) {
-      log.warn("Facet collection descriptor not found");
+      log.warn("Facet collection descriptor not found, skipping collection filter");
       return query;
     }
 
@@ -269,8 +298,12 @@ public class LuceneQueryBuilder {
       log.warn("Facets configuration not available, skipping collection filter");
       return query;
     }
+
+    // Build facet filter map
     Map<PropertyDescriptor, List<String>> selectedFacetValues = new HashMap<>();
     selectedFacetValues.put(facetDescriptor, collections);
+
+    // Apply facet drill-down
     Query filteredQuery =
         facetService.addFacetDrillDownFilters(facetsConfig, query, selectedFacetValues);
 
@@ -297,7 +330,7 @@ public class LuceneQueryBuilder {
   }
 
   /** Checks if the query already contains a type filter. */
-  private boolean containsTypeFilter(String queryString, Map<String, String> fields) {
+  private boolean containsTypeFilter(String queryString, Map<String, Object> fields) {
     boolean inQueryString =
         queryString != null && queryString.toLowerCase().contains(TYPE_FIELD + ":");
     boolean inFields = fields != null && fields.containsKey(TYPE_FIELD);
