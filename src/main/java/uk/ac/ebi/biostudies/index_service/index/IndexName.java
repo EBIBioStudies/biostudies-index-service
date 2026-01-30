@@ -10,10 +10,7 @@ public enum IndexName {
   PAGE_TAB("pagetab_index"),
   /** Files metadata */
   FILES("file_index"),
-  /** Facets */
-  FACET("facet_index"),
-  EFO("efo_index"),
-  ;
+  EFO("efo_index");
 
   private final String indexName;
 

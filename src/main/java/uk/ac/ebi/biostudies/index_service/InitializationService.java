@@ -87,12 +87,9 @@ public class InitializationService {
       log.debug("Parsers initialized");
 
       // Open and initialize main and standard indices first
-      initializerFactory.openStandardIndexes();
-      log.debug("Standard indexes opened");
-
-      // Only after main/standard indexes ready, initialize EFO
-      initializerFactory.initializeEfoIndex();
-      log.debug("EFO index initialized");
+      log.info("Initializing Lucene indexes...");
+      initializerFactory.initializeAllIndexes();
+      log.info("All indexes initialized successfully");
 
       // Init configuration for facets
       taxonomyManager.init(collectionRegistry);

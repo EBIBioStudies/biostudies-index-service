@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -12,12 +13,17 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.KeepOnlyLastCommitDeletionPolicy;
 import org.apache.lucene.index.SnapshotDeletionPolicy;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.search.ControlledRealTimeReopenThread;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.SearcherFactory;
 import org.apache.lucene.search.SearcherManager;
+import org.apache.lucene.search.spell.DirectSpellChecker;
+import org.apache.lucene.search.spell.SuggestMode;
+import org.apache.lucene.search.spell.SuggestWord;
 import org.apache.lucene.store.FSDirectory;
 import org.springframework.stereotype.Component;
+import uk.ac.ebi.biostudies.index_service.Constants;
 import uk.ac.ebi.biostudies.index_service.analysis.AnalyzerManager;
 import uk.ac.ebi.biostudies.index_service.index.IndexName;
 
@@ -35,6 +41,7 @@ public class IndexManager {
   private final AnalyzerManager analyzerManager;
   private final Map<String, ControlledRealTimeReopenThread<IndexSearcher>> reopenThreads =
       new ConcurrentHashMap<>();
+  @Setter private DirectSpellChecker spellChecker;
 
   /**
    * Constructs an IndexManager that uses the given IndexContainer for storing index components.
@@ -204,5 +211,70 @@ public class IndexManager {
     container.getIndexWriter(IndexName.SUBMISSION).commit();
     container.getIndexWriter(IndexName.FILES).commit();
     container.getIndexWriter(IndexName.PAGE_TAB).commit();
+  }
+
+  /**
+   * Checks if the spell checker has been initialized.
+   *
+   * @return true if spell checker is available
+   */
+  public boolean hasSpellChecker() {
+    return spellChecker != null;
+  }
+
+  /**
+   * Suggests similar terms for the given query string using the spell checker.
+   *
+   * <p>This method queries the submission index's content field for spelling suggestions. Uses the
+   * SearcherManager to acquire/release searchers properly for thread-safe access.
+   *
+   * @param queryString the query string to get suggestions for
+   * @param maxSuggestions maximum number of suggestions to return (typically 5)
+   * @return array of suggested spellings, empty array if no suggestions
+   * @throws IllegalStateException if spell checker not initialized
+   */
+  public String[] suggestSimilar(String queryString, int maxSuggestions) {
+    if (spellChecker == null) {
+      throw new IllegalStateException("Spell checker not initialized");
+    }
+
+    IndexSearcher searcher = null;
+    try {
+      // Acquire searcher through SearcherManager for thread-safe access
+      searcher = acquireSearcher(IndexName.SUBMISSION);
+      IndexReader reader = searcher.getIndexReader();
+      Term term = new Term(Constants.CONTENT, queryString);
+
+      // Get suggestions from the spell checker
+      SuggestWord[] suggestions =
+          spellChecker.suggestSimilar(
+              term, maxSuggestions, reader, SuggestMode.SUGGEST_WHEN_NOT_IN_INDEX);
+
+      // Convert SuggestWord[] to String[]
+      String[] results = new String[suggestions.length];
+      for (int i = 0; i < suggestions.length; i++) {
+        results[i] = suggestions[i].string;
+        log.debug(
+            "Suggestion: '{}' (score: {}, freq: {})",
+            suggestions[i].string,
+            suggestions[i].score,
+            suggestions[i].freq);
+      }
+
+      return results;
+
+    } catch (IOException e) {
+      log.error("Error getting spelling suggestions for '{}'", queryString, e);
+      return new String[0]; // Return empty array on error
+    } finally {
+      // Always release the searcher
+      if (searcher != null) {
+        try {
+          releaseSearcher(IndexName.SUBMISSION, searcher);
+        } catch (IOException e) {
+          log.error("Error releasing searcher after spell check", e);
+        }
+      }
+    }
   }
 }

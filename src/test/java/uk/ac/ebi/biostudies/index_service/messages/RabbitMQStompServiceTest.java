@@ -64,13 +64,13 @@ class RabbitMQStompServiceTest {
 
   @Test
   void testInit_WhenStompDisabled_DoesNotInitialize() {
-    when(rabbitMqConfig.getEnabled()).thenReturn(false);
+    when(rabbitMqConfig.isEnabled()).thenReturn(false);
 
     service.init();
 
     // Should return early, no session created
     assertFalse(service.isSessionConnected());
-    verify(rabbitMqConfig).getEnabled();
+    verify(rabbitMqConfig).isEnabled();
     // Verify it doesn't try to connect
     verify(rabbitMqConfig, never()).getHost();
     verify(rabbitMqConfig, never()).getPort();
@@ -80,7 +80,7 @@ class RabbitMQStompServiceTest {
   void testInit_WhenStompEnabled_ReadsConfiguration() {
     // This test ONLY verifies that configuration is read
     // It will attempt connection but fail - that's expected in unit test
-    when(rabbitMqConfig.getEnabled()).thenReturn(true);
+    when(rabbitMqConfig.isEnabled()).thenReturn(true);
     when(rabbitMqConfig.getHost()).thenReturn("localhost");
     when(rabbitMqConfig.getPort()).thenReturn(61613);
     when(rabbitMqConfig.getLoginHeader()).thenReturn("user");
@@ -88,7 +88,7 @@ class RabbitMQStompServiceTest {
 
     // Don't call init() as it will try to connect
     // Instead, just verify the configuration values are correct
-    assertTrue(rabbitMqConfig.getEnabled());
+    assertTrue(rabbitMqConfig.isEnabled());
     assertEquals("localhost", rabbitMqConfig.getHost());
     assertEquals(61613, rabbitMqConfig.getPort());
     assertEquals("user", rabbitMqConfig.getLoginHeader());
@@ -97,11 +97,11 @@ class RabbitMQStompServiceTest {
 
   @Test
   void testStartWebSocket_WhenNoSession_CallsInit() {
-    when(rabbitMqConfig.getEnabled()).thenReturn(false); // Prevent actual connection
+    when(rabbitMqConfig.isEnabled()).thenReturn(false); // Prevent actual connection
 
     service.startWebSocket();
 
-    verify(rabbitMqConfig).getEnabled();
+    verify(rabbitMqConfig).isEnabled();
   }
 
   @Test

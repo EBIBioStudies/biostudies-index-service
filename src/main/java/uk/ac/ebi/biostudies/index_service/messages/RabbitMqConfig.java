@@ -47,9 +47,14 @@ public class RabbitMqConfig {
    * Flag indicating whether STOMP messaging over WebSocket is enabled.
    * When {@code false}, STOMP/WebSocket functionality is disabled and the other
    * configuration properties are not used.
-   * Defaults to {@code false}.
+   * Defaults to {@code true}.
    */
   private final Boolean enabled;
+
+  /** Returns false only when the flag is explicitly set to false. */
+  public boolean isEnabled() {
+    return enabled == null || enabled;
+  }
 
   /**
    * Constructor for RabbitMqConfig with all STOMP configuration values injected via @Value annotations.

@@ -124,7 +124,7 @@ public class RabbitMQStompService {
   public void init() {
     log.debug("Initiating STOMP client service");
 
-    if (!rabbitMqConfig.getEnabled()) {
+    if (!rabbitMqConfig.isEnabled()) {
       log.debug("STOMP client is disabled");
       return;
     }
@@ -186,7 +186,7 @@ public class RabbitMQStompService {
             ex -> {
               log.error("Failed to connect to STOMP broker at {}: {}", url, ex.getMessage());
               // Attempt reconnection if not shutting down
-              if (!isShuttingDown.get() && rabbitMqConfig.getEnabled()) {
+              if (!isShuttingDown.get() && rabbitMqConfig.isEnabled()) {
                 scheduleReconnection();
               }
               return null;
@@ -345,7 +345,7 @@ public class RabbitMQStompService {
       stompSession.set(null);
 
       // Attempt to reconnect if not shutting down
-      if (!isShuttingDown.get() && rabbitMqConfig.getEnabled()) {
+      if (!isShuttingDown.get() && rabbitMqConfig.isEnabled()) {
         scheduleReconnection();
       }
     }
@@ -420,7 +420,7 @@ public class RabbitMQStompService {
         stompSession.set(null);
 
         // Attempt reconnection if not shutting down
-        if (!isShuttingDown.get() && rabbitMqConfig.getEnabled()) {
+        if (!isShuttingDown.get() && rabbitMqConfig.isEnabled()) {
           scheduleReconnection();
         }
       }

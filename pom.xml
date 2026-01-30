@@ -133,6 +133,13 @@
       <version>10.3.0</version>
     </dependency>
 
+    <!-- Lucene Suggest (includes SpellChecker) -->
+    <dependency>
+      <groupId>org.apache.lucene</groupId>
+      <artifactId>lucene-suggest</artifactId>
+      <version>10.3.0</version>
+    </dependency>
+
     <!-- JSON Path -->
     <dependency>
       <groupId>com.jayway.jsonpath</groupId>
