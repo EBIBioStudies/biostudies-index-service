@@ -5,8 +5,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.Getter;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper;
 import org.springframework.stereotype.Component;
@@ -16,18 +15,17 @@ import uk.ac.ebi.biostudies.index_service.registry.model.PropertyDescriptor;
 
 /**
  * Manages field analyzers for text indexing and searching.
- * <p>
- * This class builds and provides a {@link PerFieldAnalyzerWrapper} using configurations supplied
- * via {@link PropertyDescriptor} objects. It supports thread-safe initialization and retrieval
- * of analyzers and expandable field metadata.
- * </p>
  *
- * <p>Intended as a singleton Spring-managed component initialized once at startup.</p>
+ * <p>This class builds and provides a {@link PerFieldAnalyzerWrapper} using configurations supplied
+ * via {@link PropertyDescriptor} objects. It supports thread-safe initialization and retrieval of
+ * analyzers and expandable field metadata.
+ *
+ * <p>Intended as a singleton Spring-managed component initialized once at startup.
  */
+@Slf4j
 @Component
 @Getter
 public class AnalyzerManager {
-  private static final Logger logger = LogManager.getLogger(AnalyzerManager.class);
 
   private final AnalyzerFactory analyzerFactory;
 
@@ -35,8 +33,9 @@ public class AnalyzerManager {
   private final Map<String, Analyzer> fieldAnalyzerMap = new ConcurrentHashMap<>();
   private final Set<String> expandableFieldNames = ConcurrentHashMap.newKeySet();
   private final AttributeFieldAnalyzer defaultAnalyzer;
+
   // Wrapper combining per-field analyzers with a fallback default analyzer
-  private volatile PerFieldAnalyzerWrapper perFieldAnalyzerWrapper;
+  private PerFieldAnalyzerWrapper perFieldAnalyzerWrapper;
 
   /**
    * Creates a new AnalyzerManager.
@@ -51,14 +50,14 @@ public class AnalyzerManager {
 
   /**
    * Initializes field analyzers and expandable field names from the provided configuration map.
-   * <p>
-   * This method is thread-safe and should be called only once during application startup.
-   * </p>
    *
-   * @param collectionRegistry the {@code CollectionRegistry} containing metadata about properties to index
+   * <p>This method is thread-safe and should be called only once during application startup.
+   *
+   * @param collectionRegistry the {@code CollectionRegistry} containing metadata about properties
+   *     to index
    */
   public synchronized void init(CollectionRegistry collectionRegistry) {
-    logger.info("Analyzers initialization started");
+    log.debug("Analyzers initialization started");
 
     fieldAnalyzerMap.clear();
     expandableFieldNames.clear();
@@ -82,7 +81,7 @@ public class AnalyzerManager {
           Analyzer analyzer = analyzerFactory.createAnalyzer(analyzerName);
           fieldAnalyzerMap.put(fieldName, analyzer);
         } catch (IllegalStateException e) {
-          logger.error("Failed to create analyzer for field '{}': {}", fieldName, analyzerName, e);
+          log.error("Failed to create analyzer for field '{}': {}", fieldName, analyzerName, e);
         }
       }
 
@@ -93,9 +92,10 @@ public class AnalyzerManager {
     }
 
     // Create the wrapper with default analyzer (e.g. AttributeFieldAnalyzer) as fallback
-    perFieldAnalyzerWrapper = new PerFieldAnalyzerWrapper(defaultAnalyzer, fieldAnalyzerMap);
+    // Safe publication via synchronized method ensures visibility across threads
+    this.perFieldAnalyzerWrapper = new PerFieldAnalyzerWrapper(defaultAnalyzer, fieldAnalyzerMap);
 
-    logger.info("{} properties with explicit analyzers", fieldAnalyzerMap.size());
+    log.debug("{} properties with explicit analyzers", fieldAnalyzerMap.size());
   }
 
   /**
@@ -107,4 +107,12 @@ public class AnalyzerManager {
     return Collections.unmodifiableSet(expandableFieldNames);
   }
 
+  /**
+   * Returns the configured per-field analyzer wrapper.
+   *
+   * @return the PerFieldAnalyzerWrapper instance
+   */
+  public synchronized PerFieldAnalyzerWrapper getPerFieldAnalyzerWrapper() {
+    return perFieldAnalyzerWrapper;
+  }
 }

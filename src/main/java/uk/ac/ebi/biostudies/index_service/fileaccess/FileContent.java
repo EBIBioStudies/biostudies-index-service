@@ -74,11 +74,16 @@ public final class FileContent implements AutoCloseable {
         String url = buildNfsUrl(location.nfsPath());
         inputStream = HttpTools.fetchLargeFileStream(url, securityConfig);
       }
+    } catch (InterruptedException exception) {
+      // Restore the interrupted status
+      Thread.currentThread().interrupt();
+      log.error("Thread interrupted while creating input stream for file at location {}", location, exception);
     } catch (Exception exception) {
       log.error("Problem creating input stream for file at location {}", location, exception);
     }
     return inputStream;
   }
+
 
   /**
    * Returns the last-modified timestamp of the underlying resource in milliseconds since the epoch.

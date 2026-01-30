@@ -8,6 +8,8 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import org.springframework.messaging.converter.StringMessageConverter;
@@ -47,9 +49,9 @@ public class RabbitMQStompService {
   private final SubmissionSyncListener submissionSyncListener;
   private final ObjectMapper objectMapper;
 
-  private volatile StompSession stompSession;
+  private final AtomicReference<StompSession> stompSession = new AtomicReference<>();
+  private final AtomicBoolean isShuttingDown = new AtomicBoolean(false);
   private ThreadPoolTaskScheduler taskScheduler;
-  private volatile boolean isShuttingDown = false;
 
   public RabbitMQStompService(
       RabbitMqConfig rabbitMqConfig,
@@ -67,7 +69,8 @@ public class RabbitMQStompService {
    * @return {@code true} if the session exists and is connected, {@code false} otherwise
    */
   public boolean isSessionConnected() {
-    return stompSession != null && stompSession.isConnected();
+    StompSession session = stompSession.get();
+    return session != null && session.isConnected();
   }
 
   /**
@@ -77,9 +80,9 @@ public class RabbitMQStompService {
    * active session exists, this method does nothing.
    */
   public void stopWebSocket() {
-    if (stompSession != null && stompSession.isConnected()) {
-      stompSession.disconnect();
-      stompSession = null;
+    StompSession session = stompSession.getAndSet(null);
+    if (session != null && session.isConnected()) {
+      session.disconnect();
       log.info("STOMP session disconnected");
     }
   }
@@ -91,7 +94,7 @@ public class RabbitMQStompService {
    * new connection. If a connection already exists, this method does nothing.
    */
   public void startWebSocket() {
-    if (stompSession == null || !stompSession.isConnected()) {
+    if (!isSessionConnected()) {
       init();
     }
   }
@@ -126,7 +129,7 @@ public class RabbitMQStompService {
       return;
     }
 
-    if (isShuttingDown) {
+    if (isShuttingDown.get()) {
       log.debug("Service is shutting down, skipping connection attempt");
       return;
     }
@@ -137,7 +140,10 @@ public class RabbitMQStompService {
     Integer port = rabbitMqConfig.getPort();
 
     if (host == null || host.isBlank() || port == null) {
-      log.error("STOMP connection failed: host or port is not configured properly. host: '{}', port: '{}'", host, port);
+      log.error(
+          "STOMP connection failed: host or port is not configured properly. host: '{}', port: '{}'",
+          host,
+          port);
       return;
     }
 
@@ -173,14 +179,14 @@ public class RabbitMQStompService {
     sessionFuture
         .thenAccept(
             session -> {
-              this.stompSession = session;
+              stompSession.set(session);
               log.info("STOMP session established: {}", session.getSessionId());
             })
         .exceptionally(
             ex -> {
               log.error("Failed to connect to STOMP broker at {}: {}", url, ex.getMessage());
               // Attempt reconnection if not shutting down
-              if (!isShuttingDown && rabbitMqConfig.getEnabled()) {
+              if (!isShuttingDown.get() && rabbitMqConfig.getEnabled()) {
                 scheduleReconnection();
               }
               return null;
@@ -202,7 +208,7 @@ public class RabbitMQStompService {
         () -> {
           try {
             TimeUnit.SECONDS.sleep(RECONNECTION_DELAY_SECONDS);
-            if (!isShuttingDown) {
+            if (!isShuttingDown.get()) {
               log.info("Attempting to reconnect...");
               startWebSocket();
             }
@@ -220,7 +226,7 @@ public class RabbitMQStompService {
   @PreDestroy
   public void destroy() {
     log.info("Shutting down RabbitMQ STOMP service");
-    isShuttingDown = true;
+    isShuttingDown.set(true);
 
     stopWebSocket();
 
@@ -275,9 +281,7 @@ public class RabbitMQStompService {
 
       // Store session reference if not already set by the CompletableFuture
       // This ensures the session is available as soon as the connection is established
-      if (stompSession == null) {
-        stompSession = session;
-      }
+      stompSession.compareAndSet(null, session);
 
       log.info(
           "STOMP connection established - session: {}, server: {}",
@@ -308,8 +312,11 @@ public class RabbitMQStompService {
       headers.set("auto-delete", "false");
       headers.set("durable", "true");
 
-      stompSession.subscribe(headers, this);
-      log.debug("Subscribed to routing key: {} on queue: {}", routingKey, queueName);
+      StompSession session = stompSession.get();
+      if (session != null) {
+        session.subscribe(headers, this);
+        log.debug("Subscribed to routing key: {} on queue: {}", routingKey, queueName);
+      }
     }
 
     /**
@@ -326,16 +333,19 @@ public class RabbitMQStompService {
       log.error("STOMP transport error occurred: {}", exception.getMessage());
 
       // Check if it's a NOT_FOUND error related to the exchange
-      if (exception.getMessage() != null && exception.getMessage().contains("not_found") && exception.getMessage().contains("biostudies-exchange")) {
-        log.error("CRITICAL: The required exchange 'biostudies-exchange' was not found in RabbitMQ. " +
-                "Please ensure it is declared before the application starts.");
+      if (exception.getMessage() != null
+          && exception.getMessage().contains("not_found")
+          && exception.getMessage().contains("biostudies-exchange")) {
+        log.error(
+            "CRITICAL: The required exchange 'biostudies-exchange' was not found in RabbitMQ. "
+                + "Please ensure it is declared before the application starts.");
       }
 
       // Clear the session reference since the connection is broken
-      stompSession = null;
+      stompSession.set(null);
 
       // Attempt to reconnect if not shutting down
-      if (!isShuttingDown && rabbitMqConfig.getEnabled()) {
+      if (!isShuttingDown.get() && rabbitMqConfig.getEnabled()) {
         scheduleReconnection();
       }
     }
@@ -363,7 +373,8 @@ public class RabbitMQStompService {
 
       // Check if this looks like JSON
       if (!jsonString.trim().startsWith("{") && !jsonString.trim().startsWith("[")) {
-        log.error("Received non-JSON STOMP message payload - ID: {}, Content: {}", messageId, jsonString);
+        log.error(
+            "Received non-JSON STOMP message payload - ID: {}, Content: {}", messageId, jsonString);
         return;
       }
 
@@ -376,8 +387,7 @@ public class RabbitMQStompService {
         log.debug("Successfully processed message: {}", messageId);
 
       } catch (Exception e) {
-        log.error(
-            "Failed to process RabbitMQ message with ID: {} - {}", messageId, e.getMessage());
+        log.error("Failed to process RabbitMQ message with ID: {} - {}", messageId, e.getMessage());
       }
     }
 
@@ -407,10 +417,10 @@ public class RabbitMQStompService {
 
       if (!session.isConnected()) {
         log.warn("Session disconnected due to exception");
-        stompSession = null;
+        stompSession.set(null);
 
         // Attempt reconnection if not shutting down
-        if (!isShuttingDown && rabbitMqConfig.getEnabled()) {
+        if (!isShuttingDown.get() && rabbitMqConfig.getEnabled()) {
           scheduleReconnection();
         }
       }

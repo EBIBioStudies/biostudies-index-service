@@ -58,20 +58,16 @@ public class EFOLoader {
       IRI.create("http://www.w3.org/2002/07/owl#versionInfo");
 
   private final EFOConfig config;
-  private volatile EFOTermResolver resolver;
+  private EFOTermResolver resolver;
 
   public EFOLoader(EFOConfig config) {
     this.config = config;
   }
 
-  /** Returns cached resolver (lazy-built on first call). Thread-safe via double-checked locking. */
-  public EFOTermResolver getResolver() {
+  /** Returns cached resolver (lazy-built on first call). Thread-safe. */
+  public synchronized EFOTermResolver getResolver() {
     if (resolver == null) {
-      synchronized (this) {
-        if (resolver == null) {
-          resolver = rebuildResolver();
-        }
-      }
+      resolver = rebuildResolver();
     }
     return resolver;
   }
@@ -80,32 +76,27 @@ public class EFOLoader {
    * Forces complete rebuild: OWL parse → filter → resolver. Call when new EFO version detected or
    * index rebuild required.
    */
-  public EFOTermResolver rebuildResolver() {
-    synchronized (this) {
-      log.info("Rebuilding EFO resolver");
-      long start = System.currentTimeMillis();
+  public synchronized EFOTermResolver rebuildResolver() {
+    log.info("Rebuilding EFO resolver");
+    long start = System.currentTimeMillis();
 
-      File efoFile = getEFOFile();
-      if (efoFile == null) {
-        throw new IllegalStateException("EFO file unavailable");
-      }
+    File efoFile = getEFOFile();
 
-      try (InputStream is = new FileInputStream(efoFile)) {
-        log.info("Preparing to process {}", efoFile.toPath());
-        LoadResult result = load(is); // Returns model + version
-        log.info("EFO file processed. Removing not needed classes");
-        EFOModel cleanModel = removeIgnoredClasses(result.model, config.getIgnoreList());
-        resolver = new EFOTermResolver(cleanModel, result.version);
+    try (InputStream is = new FileInputStream(efoFile)) {
+      log.info("Preparing to process {}", efoFile.toPath());
+      LoadResult result = load(is); // Returns model + version
+      log.info("EFO file processed. Removing not needed classes");
+      EFOModel cleanModel = removeIgnoredClasses(result.model, config.getIgnoreList());
+      resolver = new EFOTermResolver(cleanModel, result.version);
 
-        log.info(
-            "EFO rebuilt: {} nodes in {}ms (v{})",
-            cleanModel.getNodeCount(),
-            System.currentTimeMillis() - start,
-            result.version);
-        return resolver;
-      } catch (IOException e) {
-        throw new IllegalStateException("EFO rebuild failed", e);
-      }
+      log.info(
+          "EFO rebuilt: {} nodes in {}ms (v{})",
+          cleanModel.getNodeCount(),
+          System.currentTimeMillis() - start,
+          result.version);
+      return resolver;
+    } catch (IOException e) {
+      throw new IllegalStateException("EFO rebuild failed", e);
     }
   }
 
@@ -152,31 +143,10 @@ public class EFOLoader {
     }
   }
 
-  /** Locates EFO OWL file: external preferred, bundled fallback. */
-//  private File getEFOFileX() {
-//    File target = new File(config.getOwlFilename());
-//    if (target.exists()) {
-//      log.debug("Using external EFO: {}", config.getOwlFilename());
-//      return target;
-//    }
-//
-//    String bundlePath = config.getLocalOwlFilename();
-//    log.warn("External missing, copying bundled {}", bundlePath);
-//
-//    Resource resource = new ClassPathResource(bundlePath);
-//    try (InputStream is = resource.getInputStream()) {
-//      Files.copy(is, target.toPath(), StandardCopyOption.REPLACE_EXISTING);
-//      if (target.exists() && target.length() > 0) {
-//        log.info("Bundled EFO ready");
-//        return target;
-//      }
-//    } catch (IOException e) {
-//      log.error("Bundled copy failed", e);
-//    }
-//    return null;
-//  }
-
   private File getEFOFile() {
+    if (config.getOwlFilename() == null) {
+      throw new IllegalStateException("EFO file location not configured");
+    }
     File external = new File(config.getOwlFilename());
 
     if (external.exists()) {
@@ -222,7 +192,13 @@ public class EFOLoader {
         log.info("Downloaded {} MB", bytes / 1_048_576);
       }
     } catch (IOException e) {
-      if (target.exists()) target.delete(); // Cleanup partial
+      if (target.exists()) {
+        // Cleanup partial
+        boolean deleted = target.delete();
+        if (!deleted) {
+          log.warn("Failed to delete partial EFO download: {}", target.getAbsolutePath());
+        }
+      }
       throw e;
     }
   }

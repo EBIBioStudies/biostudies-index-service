@@ -3,6 +3,7 @@ package uk.ac.ebi.biostudies.index_service.messages;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,9 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.messaging.simp.stomp.StompSession;
 import uk.ac.ebi.biostudies.index_service.index.SubmissionSyncListener;
 
-/**
- * Unit tests for RabbitMQStompService.
- */
+/** Unit tests for RabbitMQStompService. */
 @ExtendWith(MockitoExtension.class)
 class RabbitMQStompServiceTest {
 
@@ -133,13 +132,16 @@ class RabbitMQStompServiceTest {
   }
 
   /**
-   * Helper method to set private stompSession field using reflection.
+   * Helper method to set private stompSession field using reflection. The field is now an
+   * AtomicReference<StompSession>, so we need to set its value.
    */
   private void setStompSession(RabbitMQStompService service, StompSession session) {
     try {
       var field = RabbitMQStompService.class.getDeclaredField("stompSession");
       field.setAccessible(true);
-      field.set(service, session);
+      @SuppressWarnings("unchecked")
+      AtomicReference<StompSession> atomicRef = (AtomicReference<StompSession>) field.get(service);
+      atomicRef.set(session);
     } catch (Exception e) {
       throw new RuntimeException("Failed to set stompSession", e);
     }

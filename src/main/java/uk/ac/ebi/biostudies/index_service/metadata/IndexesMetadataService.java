@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexCommit;
@@ -137,20 +138,23 @@ public class IndexesMetadataService {
     double size = 0;
     Path indexPath = Path.of(pathStr);
     if (Files.isDirectory(indexPath)) {
-      size =
-          Files.walk(indexPath)
-              .filter(Files::isRegularFile)
-              .mapToLong(
-                  p -> {
-                    try {
-                      return Files.size(p);
-                    } catch (IOException e) {
-                      log.debug("Failed to get size for file: {}", p, e);
-                      return 0;
-                    }
-                  })
-              .sum();
+      try (Stream<Path> pathStream = Files.walk(indexPath)) {
+        size =
+            pathStream
+                .filter(Files::isRegularFile)
+                .mapToLong(
+                    p -> {
+                      try {
+                        return Files.size(p);
+                      } catch (IOException e) {
+                        log.debug("Failed to get size for file: {}", p, e);
+                        return 0;
+                      }
+                    })
+                .sum();
+      }
     }
     return size;
   }
+
 }
