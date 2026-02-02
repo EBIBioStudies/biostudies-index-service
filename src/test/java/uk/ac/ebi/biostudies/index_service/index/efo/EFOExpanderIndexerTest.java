@@ -121,7 +121,7 @@ class EFOExpanderIndexerTest {
     // Then
     try (IndexReader reader = DirectoryReader.open(directory)) {
       IndexSearcher searcher = new IndexSearcher(reader);
-      TopDocs results = searcher.search(new TermQuery(new Term(EFOIndexFields.TERM, "cancer")), 10);
+      TopDocs results = searcher.search(new TermQuery(new Term(EFOField.QE_TERM.getFieldName(), "cancer")), 10);
 
       assertTrue(results.totalHits.value() > 0, "Primary term should be searchable");
     }
@@ -150,8 +150,8 @@ class EFOExpanderIndexerTest {
     try (IndexReader reader = DirectoryReader.open(directory)) {
       StoredFields storedFields = reader.storedFields();
       Document doc = storedFields.document(0);
-      String[] terms = doc.getValues(EFOIndexFields.TERM);
-      String[] expansions = doc.getValues(EFOIndexFields.EFO);
+      String[] terms = doc.getValues(EFOField.QE_TERM.getFieldName());
+      String[] expansions = doc.getValues(EFOField.QE_EFO.getFieldName());
 
       assertTrue(List.of(terms).contains("cancer"), "Should contain primary term");
       assertTrue(List.of(terms).contains("neoplasm"), "Should contain synonym as searchable");
@@ -189,12 +189,12 @@ class EFOExpanderIndexerTest {
     try (IndexReader reader = DirectoryReader.open(directory)) {
       IndexSearcher searcher = new IndexSearcher(reader);
       TopDocs results =
-          searcher.search(new TermQuery(new Term(EFOIndexFields.TERM, "disease")), 10);
+          searcher.search(new TermQuery(new Term(EFOField.QE_TERM.getFieldName(), "disease")), 10);
 
       assertTrue(results.totalHits.value() > 0);
       StoredFields storedFields = reader.storedFields();
       Document doc = storedFields.document(results.scoreDocs[0].doc);
-      String[] expansions = doc.getValues(EFOIndexFields.EFO);
+      String[] expansions = doc.getValues(EFOField.QE_EFO.getFieldName());
 
       assertTrue(List.of(expansions).contains("cancer"), "Should expand to child");
     }
@@ -227,12 +227,12 @@ class EFOExpanderIndexerTest {
     try (IndexReader reader = DirectoryReader.open(directory)) {
       IndexSearcher searcher = new IndexSearcher(reader);
       TopDocs results =
-          searcher.search(new TermQuery(new Term(EFOIndexFields.TERM, "experimental factor")), 10);
+          searcher.search(new TermQuery(new Term(EFOField.QE_TERM.getFieldName(), "experimental factor")), 10);
 
       if (results.totalHits.value() > 0) {
         StoredFields storedFields = reader.storedFields();
         Document doc = storedFields.document(results.scoreDocs[0].doc);
-        String[] expansions = doc.getValues(EFOIndexFields.EFO);
+        String[] expansions = doc.getValues(EFOField.QE_EFO.getFieldName());
 
         assertFalse(
             List.of(expansions).contains("disease"),
@@ -288,7 +288,7 @@ class EFOExpanderIndexerTest {
 
       StoredFields storedFields = reader.storedFields();
       Document doc = storedFields.document(0);
-      String[] expansions = doc.getValues(EFOIndexFields.EFO);
+      String[] expansions = doc.getValues(EFOField.QE_EFO.getFieldName());
 
       assertFalse(List.of(expansions).contains("ca"), "Short terms should be filtered");
       assertTrue(List.of(expansions).contains("neoplasm"), "Valid synonym should be included");
@@ -322,7 +322,7 @@ class EFOExpanderIndexerTest {
     try (IndexReader reader = DirectoryReader.open(directory)) {
       StoredFields storedFields = reader.storedFields();
       Document doc = storedFields.document(0);
-      String[] expansions = doc.getValues(EFOIndexFields.EFO);
+      String[] expansions = doc.getValues(EFOField.QE_EFO.getFieldName());
       List<String> expansionList = List.of(expansions);
 
       assertFalse(expansionList.contains("neoplasm (nos)"), "NOS terms should be filtered");
@@ -434,7 +434,7 @@ class EFOExpanderIndexerTest {
 
       StoredFields storedFields = reader.storedFields();
       Document doc = storedFields.document(0);
-      String[] terms = doc.getValues(EFOIndexFields.TERM);
+      String[] terms = doc.getValues(EFOField.QE_TERM.getFieldName());
 
       assertTrue(List.of(terms).contains("cancer test"), "# should be replaced");
       assertTrue(List.of(terms).contains("neo plasm "), "Special chars should be replaced");
@@ -467,7 +467,7 @@ class EFOExpanderIndexerTest {
 
       StoredFields storedFields = reader.storedFields();
       Document doc = storedFields.document(0);
-      String[] expansions = doc.getValues(EFOIndexFields.EFO);
+      String[] expansions = doc.getValues(EFOField.QE_EFO.getFieldName());
 
       assertTrue(List.of(expansions).contains("t-cell"), "Hyphens should be preserved");
     }
@@ -530,7 +530,7 @@ class EFOExpanderIndexerTest {
     try (IndexReader reader = DirectoryReader.open(directory)) {
       StoredFields storedFields = reader.storedFields();
       Document doc = storedFields.document(0);
-      String[] terms = doc.getValues(EFOIndexFields.TERM);
+      String[] terms = doc.getValues(EFOField.QE_TERM.getFieldName());
 
       assertTrue(List.of(terms).contains("cancer"), "Should be lowercase");
       assertTrue(List.of(terms).contains("neoplasm"), "Should be lowercase");

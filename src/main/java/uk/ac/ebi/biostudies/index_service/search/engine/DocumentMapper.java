@@ -1,4 +1,4 @@
-package uk.ac.ebi.biostudies.index_service.search.searchers;
+package uk.ac.ebi.biostudies.index_service.search.engine;
 
 import org.apache.lucene.document.Document;
 

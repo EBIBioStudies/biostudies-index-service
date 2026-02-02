@@ -1,4 +1,4 @@
-package uk.ac.ebi.biostudies.index_service.search.engine;
+package uk.ac.ebi.biostudies.index_service.search.searchers;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;

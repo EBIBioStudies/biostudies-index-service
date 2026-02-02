@@ -2,15 +2,15 @@ package uk.ac.ebi.biostudies.index_service.search.query;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.lucene.document.Document;
-import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.*;
 import org.springframework.stereotype.Service;
-import uk.ac.ebi.biostudies.index_service.index.IndexName;
-import uk.ac.ebi.biostudies.index_service.index.efo.EFOIndexFields;
-import uk.ac.ebi.biostudies.index_service.index.management.IndexManager;
+import uk.ac.ebi.biostudies.index_service.exceptions.SearchException;
+import uk.ac.ebi.biostudies.index_service.index.efo.EFOField;
+import uk.ac.ebi.biostudies.index_service.search.searchers.EFOSearchHit;
+import uk.ac.ebi.biostudies.index_service.search.searchers.EFOSearcher;
 
 /**
  * Looks up EFO (Experimental Factor Ontology) expansion terms for query terms.
@@ -25,25 +25,34 @@ import uk.ac.ebi.biostudies.index_service.index.management.IndexManager;
  *   <li>Synonyms: "leukaemia" (British spelling), "blood cancer"
  *   <li>EFO terms: "acute myeloid leukemia", "chronic lymphocytic leukemia"
  * </ul>
+ *
+ * <p>This service is designed to be fault-tolerant - all exceptions are caught and logged,
+ * returning empty expansion results to allow searches to continue with the original query.
  */
 @Slf4j
 @Service
 public class EFOExpansionLookupIndex {
 
-  /** Maximum number of EFO index hits to retrieve */
+  /** Maximum number of EFO index hits to retrieve for expansion. */
   private static final int MAX_INDEX_HITS = 16;
 
-  private final IndexManager indexManager;
+  private final EFOSearcher efoSearcher;
 
-  public EFOExpansionLookupIndex(IndexManager indexManager) {
-    this.indexManager = indexManager;
+  /**
+   * Constructs an EFO expansion lookup service.
+   *
+   * @param efoSearcher the searcher for querying the EFO index
+   * @throws NullPointerException if efoSearcher is null
+   */
+  public EFOExpansionLookupIndex(EFOSearcher efoSearcher) {
+    this.efoSearcher = java.util.Objects.requireNonNull(efoSearcher, "efoSearcher must not be null");
   }
 
   /**
    * Retrieves EFO expansion terms (synonyms and ontology terms) for a given query.
    *
    * <p>The method searches the EFO index for matching terms and returns any found synonyms and EFO
-   * identifiers. Properly manages index searcher lifecycle using acquire/release pattern.
+   * identifiers. The original query is converted to search the EFO index's "term" field.
    *
    * <p>This method never throws exceptions - all errors are caught and logged, returning an empty
    * expansion result to allow the search to continue with the original query.
@@ -53,13 +62,9 @@ public class EFOExpansionLookupIndex {
    */
   public EFOExpansionTerms getExpansionTerms(Query originalQuery) {
     EFOExpansionTerms expansion = new EFOExpansionTerms();
-    IndexSearcher searcher = null;
 
     try {
-      // Acquire searcher from pool
-      searcher = indexManager.acquireSearcher(IndexName.EFO);
-
-      // Convert query to search EFO index (changes field to "term")
+      // Convert query to search EFO index (changes field to EFO_TERM)
       Query efoQuery = convertQueryForEfoIndex(originalQuery);
 
       if (efoQuery == null) {
@@ -67,21 +72,19 @@ public class EFOExpansionLookupIndex {
         return expansion;
       }
 
-      // Search EFO index
-      TopDocs hits = searcher.search(efoQuery, MAX_INDEX_HITS);
+      // Search EFO index using the facade
+      List<EFOSearchHit> hits = efoSearcher.searchAll(efoQuery, MAX_INDEX_HITS);
 
-      if (hits.scoreDocs.length == 0) {
+      if (hits.isEmpty()) {
         log.debug("No EFO expansion hits found for query: {}", originalQuery);
         return expansion;
       }
 
-      log.debug("Found {} EFO expansion hits for query: {}", hits.scoreDocs.length, originalQuery);
+      log.debug("Found {} EFO expansion hits for query: {}", hits.size(), originalQuery);
 
       // Extract expansion terms from hits
-      StoredFields storedFields = searcher.storedFields();
-      for (ScoreDoc scoreDoc : hits.scoreDocs) {
-        Document doc = storedFields.document(scoreDoc.doc);
-        extractExpansionTerms(doc, expansion);
+      for (EFOSearchHit hit : hits) {
+        extractExpansionTerms(hit, expansion);
       }
 
       log.debug(
@@ -90,70 +93,56 @@ public class EFOExpansionLookupIndex {
           expansion.synonyms.size(),
           expansion.efo.size());
 
-    } catch (IOException ex) {
-      log.error("IO error while expanding terms for query: {}", originalQuery, ex);
+    } catch (SearchException ex) {
+      log.error("Search error while expanding terms for query: {}", originalQuery, ex);
       // Return empty expansion - allows search to continue with original query
     } catch (Exception ex) {
       log.error("Unexpected error while expanding terms for query: {}", originalQuery, ex);
       // Return empty expansion - allows search to continue with original query
-    } finally {
-      // Always release searcher back to pool
-      if (searcher != null) {
-        releaseSearcherSafely(searcher);
-      }
     }
 
     return expansion;
   }
 
   /**
-   * Extracts synonym and EFO terms from a document and adds them to the expansion.
+   * Extracts synonym and EFO terms from an EFO search hit and adds them to the expansion.
    *
-   * @param doc the Lucene document from the EFO index
+   * <p>Filters out null, empty, or whitespace-only terms.
+   *
+   * @param efoSearchHit the EFO search hit containing synonyms and EFO terms
    * @param expansion the expansion object to populate
    */
-  private void extractExpansionTerms(Document doc, EFOExpansionTerms expansion) {
-    // Get synonym terms
-    String[] synonyms = doc.getValues(EFOIndexFields.TERM);
-    if (synonyms != null && synonyms.length > 0) {
-      // Filter out empty/whitespace-only terms
-      Arrays.stream(synonyms)
+  private void extractExpansionTerms(EFOSearchHit efoSearchHit, EFOExpansionTerms expansion) {
+    // Extract synonym terms
+    if (efoSearchHit.synonyms() != null && !efoSearchHit.synonyms().isEmpty()) {
+      efoSearchHit.synonyms().stream()
           .filter(s -> s != null && !s.trim().isEmpty())
           .forEach(expansion.synonyms::add);
     }
 
-    // Get EFO ontology terms
-    String[] efoTerms = doc.getValues(EFOIndexFields.EFO);
-    if (efoTerms != null && efoTerms.length > 0) {
-      // Filter out empty/whitespace-only terms
-      Arrays.stream(efoTerms)
+    // Extract EFO ontology terms
+    if (efoSearchHit.efoTerms() != null && !efoSearchHit.efoTerms().isEmpty()) {
+      efoSearchHit.efoTerms().stream()
           .filter(s -> s != null && !s.trim().isEmpty())
           .forEach(expansion.efo::add);
     }
   }
 
   /**
-   * Safely releases the searcher back to the pool, logging any errors.
+   * Converts a query to search the EFO index by changing its field to the EFO term field.
    *
-   * @param searcher the searcher to release
-   */
-  private void releaseSearcherSafely(IndexSearcher searcher) {
-    try {
-      indexManager.releaseSearcher(IndexName.EFO, searcher);
-    } catch (IOException ex) {
-      log.error("Error releasing EFO searcher", ex);
-      // Don't rethrow - we're in cleanup code
-    } catch (Exception ex) {
-      log.error("Unexpected error releasing EFO searcher", ex);
-      // Don't rethrow - we're in cleanup code
-    }
-  }
-
-  /**
-   * Converts a query to search the EFO index by changing its field to "term".
+   * <p>The EFO index uses a standard field name ({@link EFOField#QE_TERM}) for all lookups, so we
+   * rewrite the query to target this field regardless of the original query's target field.
    *
-   * <p>The EFO index uses a standard field name "term" for all lookups, so we need to rewrite the
-   * query regardless of what field it originally targeted.
+   * <p>Supported query types:
+   * <ul>
+   *   <li>{@link TermQuery}
+   *   <li>{@link PhraseQuery}
+   *   <li>{@link PrefixQuery}
+   *   <li>{@link WildcardQuery}
+   *   <li>{@link FuzzyQuery}
+   *   <li>{@link TermRangeQuery}
+   * </ul>
    *
    * @param originalQuery the original query
    * @return a query suitable for searching the EFO index, or null if conversion fails or query type
@@ -198,11 +187,19 @@ public class EFOExpansionLookupIndex {
     }
   }
 
+  /**
+   * Converts a term query to search the EFO term field.
+   */
   private Query convertTermQuery(TermQuery query) {
     Term originalTerm = query.getTerm();
-    return new TermQuery(new Term(EFOIndexFields.TERM, originalTerm.text()));
+    return new TermQuery(new Term(EFOField.QE_TERM.getFieldName(), originalTerm.text()));
   }
 
+  /**
+   * Converts a phrase query to search the EFO term field.
+   *
+   * <p>Multi-word phrases are combined into a single term for EFO lookup.
+   */
   private Query convertPhraseQuery(PhraseQuery query) {
     Term[] terms = query.getTerms();
     if (terms.length == 0) {
@@ -210,34 +207,46 @@ public class EFOExpansionLookupIndex {
       return null;
     }
 
-    // Convert multi-word phrase to single term for EFO lookup
+    // Combine multi-word phrase into single term for EFO lookup
     String combinedText =
         Arrays.stream(terms).map(Term::text).reduce((a, b) -> a + " " + b).orElse("");
 
-    return new TermQuery(new Term(EFOIndexFields.TERM, combinedText));
+    return new TermQuery(new Term(EFOField.QE_TERM.getFieldName(), combinedText));
   }
 
+  /**
+   * Converts a prefix query to search the EFO term field.
+   */
   private Query convertPrefixQuery(PrefixQuery query) {
     Term originalTerm = query.getPrefix();
-    return new PrefixQuery(new Term(EFOIndexFields.TERM, originalTerm.text()));
+    return new PrefixQuery(new Term(EFOField.QE_TERM.getFieldName(), originalTerm.text()));
   }
 
+  /**
+   * Converts a wildcard query to search the EFO term field.
+   */
   private Query convertWildcardQuery(WildcardQuery query) {
     Term originalTerm = query.getTerm();
-    return new WildcardQuery(new Term(EFOIndexFields.TERM, originalTerm.text()));
+    return new WildcardQuery(new Term(EFOField.QE_TERM.getFieldName(), originalTerm.text()));
   }
 
+  /**
+   * Converts a fuzzy query to search the EFO term field, preserving fuzziness parameters.
+   */
   private Query convertFuzzyQuery(FuzzyQuery query) {
     Term originalTerm = query.getTerm();
     int maxEdits = query.getMaxEdits();
     int prefixLength = query.getPrefixLength();
     return new FuzzyQuery(
-        new Term(EFOIndexFields.TERM, originalTerm.text()), maxEdits, prefixLength);
+        new Term(EFOField.QE_TERM.getFieldName(), originalTerm.text()), maxEdits, prefixLength);
   }
 
+  /**
+   * Converts a term range query to search the EFO term field, preserving range bounds.
+   */
   private Query convertTermRangeQuery(TermRangeQuery query) {
     return new TermRangeQuery(
-        EFOIndexFields.TERM,
+        EFOField.QE_TERM.getFieldName(),
         query.getLowerTerm(),
         query.getUpperTerm(),
         query.includesLower(),

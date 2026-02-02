@@ -194,18 +194,22 @@ public class LuceneQueryExecutor {
     Sort sort = criteria.getSort();
 
     IndexSearcher searcher = indexManager.acquireSearcher(indexName);
+    int maxNumberResults =
+        criteria.getLimit() != null
+            ? Math.min(criteria.getLimit(), DEFAULT_MAX_RESULTS)
+            : DEFAULT_MAX_RESULTS;
     try {
       TopDocs topDocs =
           sort != null
-              ? searcher.search(query, DEFAULT_MAX_RESULTS, sort)
-              : searcher.search(query, DEFAULT_MAX_RESULTS);
+              ? searcher.search(query, maxNumberResults, sort)
+              : searcher.search(query, maxNumberResults);
 
       if (topDocs.totalHits.value() > DEFAULT_MAX_RESULTS) {
         log.warn(
             "Query on index {} returned {} hits but only fetching top {}. Consider using pagination.",
             indexName,
             topDocs.totalHits.value(),
-            DEFAULT_MAX_RESULTS);
+            maxNumberResults);
       }
 
       List<Document> documents = new ArrayList<>(topDocs.scoreDocs.length);

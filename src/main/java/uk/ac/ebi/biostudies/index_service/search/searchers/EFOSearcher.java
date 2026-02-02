@@ -23,10 +23,10 @@ import uk.ac.ebi.biostudies.index_service.search.engine.SearchFacade;
  */
 @Slf4j
 @Component
-public class SubmissionSearcher implements SearchFacade<SubmissionSearchHit> {
+public class EFOSearcher implements SearchFacade<EFOSearchHit> {
 
   private final LuceneQueryExecutor queryExecutor;
-  private final DocumentMapper<SubmissionSearchHit> mapper;
+  private final DocumentMapper<EFOSearchHit> mapper;
 
   /**
    * Constructs a submission searcher.
@@ -35,8 +35,8 @@ public class SubmissionSearcher implements SearchFacade<SubmissionSearchHit> {
    * @param mapper the document-to-DTO mapper
    * @throws NullPointerException if any parameter is null
    */
-  public SubmissionSearcher(
-      LuceneQueryExecutor queryExecutor, DocumentMapper<SubmissionSearchHit> mapper) {
+  public EFOSearcher(
+      LuceneQueryExecutor queryExecutor, DocumentMapper<EFOSearchHit> mapper) {
     this.queryExecutor = Objects.requireNonNull(queryExecutor, "queryExecutor must not be null");
     this.mapper = Objects.requireNonNull(mapper, "mapper must not be null");
   }
@@ -51,14 +51,14 @@ public class SubmissionSearcher implements SearchFacade<SubmissionSearchHit> {
    * @throws NullPointerException if criteria is null
    */
   @Override
-  public PaginatedResult<SubmissionSearchHit> search(SearchCriteria criteria) {
+  public PaginatedResult<EFOSearchHit> search(SearchCriteria criteria) {
     Objects.requireNonNull(criteria, "criteria must not be null");
 
     try {
       log.debug("Executing submission search with criteria: {}", criteria);
 
-      PaginatedResult<Document> documents = queryExecutor.execute(IndexName.SUBMISSION, criteria);
-      PaginatedResult<SubmissionSearchHit> results = documents.map(mapper::toDto);
+      PaginatedResult<Document> documents = queryExecutor.execute(IndexName.EFO, criteria);
+      PaginatedResult<EFOSearchHit> results = documents.map(mapper::toDto);
 
       log.debug(
           "Submission search completed: {} results, {} total hits",

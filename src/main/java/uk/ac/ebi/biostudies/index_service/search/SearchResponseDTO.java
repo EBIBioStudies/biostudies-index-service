@@ -3,7 +3,7 @@ package uk.ac.ebi.biostudies.index_service.search;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import uk.ac.ebi.biostudies.index_service.search.engine.SubmissionSearchHit;
+import uk.ac.ebi.biostudies.index_service.search.searchers.SubmissionSearchHit;
 
 /**
  * DTO representing paginated search results with facets and query expansion metadata.

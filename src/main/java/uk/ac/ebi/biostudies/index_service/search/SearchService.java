@@ -15,7 +15,7 @@ import uk.ac.ebi.biostudies.index_service.registry.service.CollectionRegistrySer
 import uk.ac.ebi.biostudies.index_service.search.engine.LuceneQueryExecutor;
 import uk.ac.ebi.biostudies.index_service.search.engine.PaginatedResult;
 import uk.ac.ebi.biostudies.index_service.search.engine.SearchCriteria;
-import uk.ac.ebi.biostudies.index_service.search.engine.SubmissionSearchHit;
+import uk.ac.ebi.biostudies.index_service.search.searchers.SubmissionSearchHit;
 import uk.ac.ebi.biostudies.index_service.search.preprocessing.QueryPreprocessor;
 import uk.ac.ebi.biostudies.index_service.search.query.FacetService;
 import uk.ac.ebi.biostudies.index_service.search.query.LuceneQueryBuilder;

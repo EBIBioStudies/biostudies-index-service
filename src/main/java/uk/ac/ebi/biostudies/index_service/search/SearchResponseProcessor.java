@@ -18,7 +18,7 @@ import uk.ac.ebi.biostudies.index_service.Constants;
 import uk.ac.ebi.biostudies.index_service.index.IndexName;
 import uk.ac.ebi.biostudies.index_service.index.management.IndexManager;
 import uk.ac.ebi.biostudies.index_service.search.engine.PaginatedResult;
-import uk.ac.ebi.biostudies.index_service.search.engine.SubmissionSearchHit;
+import uk.ac.ebi.biostudies.index_service.search.searchers.SubmissionSearchHit;
 import uk.ac.ebi.biostudies.index_service.search.query.QueryResult;
 
 /**

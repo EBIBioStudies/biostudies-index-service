@@ -8,20 +8,25 @@ import org.apache.lucene.search.Sort;
 /**
  * Encapsulates all parameters needed for executing a search query.
  *
- * <p>Provides a fluent builder API for constructing search requests with optional pagination and
- * sorting. Use {@link #of(Query)} for simple non-paginated searches, or {@link Builder} for complex
- * searches with pagination and sorting.
+ * <p>Provides a fluent builder API for constructing search requests with optional pagination,
+ * sorting, and result limiting. Use {@link #of(Query)} for simple non-paginated searches, or {@link
+ * Builder} for complex searches with pagination and sorting.
  *
  * <p>Instances are immutable and thread-safe.
  *
  * <p>Example usage:
  *
  * <pre>
- * // Simple search
+ * // Simple non-paginated search
  * SearchCriteria simple = SearchCriteria.of(query);
  *
+ * // Non-paginated search with custom limit
+ * SearchCriteria limited = new SearchCriteria.Builder(query)
+ *     .limit(500)
+ *     .build();
+ *
  * // Paginated search with sorting
- * SearchCriteria complex = new SearchCriteria.Builder(query)
+ * SearchCriteria paginated = new SearchCriteria.Builder(query)
  *     .page(1, 20)
  *     .sort(new Sort(SortField.FIELD_SCORE))
  *     .build();
@@ -34,6 +39,7 @@ public class SearchCriteria {
   private final Integer page;
   private final Integer pageSize;
   private final Sort sort;
+  private final Integer limit;
 
   /** Private constructor - use {@link #of(Query)} or {@link Builder}. */
   private SearchCriteria(Builder builder) {
@@ -41,6 +47,7 @@ public class SearchCriteria {
     this.page = builder.page;
     this.pageSize = builder.pageSize;
     this.sort = builder.sort;
+    this.limit = builder.limit;
 
     if ((page == null) != (pageSize == null)) {
       throw new IllegalArgumentException(
@@ -54,10 +61,19 @@ public class SearchCriteria {
     if (pageSize != null && pageSize <= 0) {
       throw new IllegalArgumentException("pageSize must be > 0, got: " + pageSize);
     }
+
+    if (limit != null && limit <= 0) {
+      throw new IllegalArgumentException("limit must be > 0, got: " + limit);
+    }
+
+    if (isPaginated() && limit != null) {
+      throw new IllegalArgumentException(
+          "Cannot set both pagination (page/pageSize) and limit. Use pagination for paginated searches, or limit for non-paginated searches.");
+    }
   }
 
   /**
-   * Creates a simple search criteria with only a query, no pagination or sorting.
+   * Creates a simple search criteria with only a query, no pagination, sorting, or limit.
    *
    * @param query the Lucene query to execute
    * @return a new SearchCriteria instance
@@ -65,42 +81,6 @@ public class SearchCriteria {
    */
   public static SearchCriteria of(Query query) {
     return new Builder(query).build();
-  }
-
-  /**
-   * Returns the Lucene query to execute.
-   *
-   * @return the query, never null
-   */
-  public Query getQuery() {
-    return query;
-  }
-
-  /**
-   * Returns the requested page number (1-indexed), or null if pagination is not requested.
-   *
-   * @return the page number, or null for non-paginated searches
-   */
-  public Integer getPage() {
-    return page;
-  }
-
-  /**
-   * Returns the number of results per page, or null if pagination is not requested.
-   *
-   * @return the page size, or null for non-paginated searches
-   */
-  public Integer getPageSize() {
-    return pageSize;
-  }
-
-  /**
-   * Returns the sort criteria, or null for default relevance-based sorting.
-   *
-   * @return the sort criteria, or null
-   */
-  public Sort getSort() {
-    return sort;
   }
 
   /**
@@ -123,13 +103,18 @@ public class SearchCriteria {
         + pageSize
         + ", sort="
         + sort
+        + ", limit="
+        + limit
         + '}';
   }
 
   /**
    * Builder for constructing {@link SearchCriteria} instances.
    *
-   * <p>Provides a fluent API for setting optional pagination and sorting parameters.
+   * <p>Provides a fluent API for setting optional pagination, sorting, and limit parameters.
+   *
+   * <p><b>Note:</b> Pagination (page/pageSize) and limit are mutually exclusive. Use pagination for
+   * paginated searches, or limit for non-paginated searches with a custom maximum result count.
    */
   public static class Builder {
 
@@ -137,6 +122,7 @@ public class SearchCriteria {
     private Integer page;
     private Integer pageSize;
     private Sort sort;
+    private Integer limit;
 
     /**
      * Creates a new builder with the specified query.
@@ -152,6 +138,9 @@ public class SearchCriteria {
      * Sets pagination parameters.
      *
      * <p>Page numbers are 1-indexed (first page is 1, not 0).
+     *
+     * <p><b>Note:</b> Cannot be used together with {@link #limit(Integer)}. Pagination and limit
+     * are mutually exclusive.
      *
      * @param page the page number, must be >= 1
      * @param pageSize the number of results per page, must be > 0
@@ -184,10 +173,31 @@ public class SearchCriteria {
     }
 
     /**
+     * Sets the maximum number of results to return for non-paginated searches.
+     *
+     * <p>This is useful when you want all results but with a safety limit lower than the executor's
+     * default maximum. If not set, the query executor's default limit applies (typically 10,000).
+     *
+     * <p><b>Note:</b> Cannot be used together with {@link #page(int, int)}. Limit is only for
+     * non-paginated searches.
+     *
+     * @param limit the maximum number of results to return, must be > 0
+     * @return this builder for method chaining
+     * @throws IllegalArgumentException if limit <= 0
+     */
+    public Builder limit(Integer limit) {
+      if (limit != null && limit <= 0) {
+        throw new IllegalArgumentException("limit must be > 0, got: " + limit);
+      }
+      this.limit = limit;
+      return this;
+    }
+
+    /**
      * Builds the {@link SearchCriteria} instance.
      *
      * @return a new SearchCriteria instance
-     * @throws IllegalArgumentException if validation fails
+     * @throws IllegalArgumentException if validation fails, or if both pagination and limit are set
      */
     public SearchCriteria build() {
       return new SearchCriteria(this);

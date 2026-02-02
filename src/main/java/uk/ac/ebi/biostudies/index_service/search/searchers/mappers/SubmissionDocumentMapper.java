@@ -3,8 +3,8 @@ package uk.ac.ebi.biostudies.index_service.search.searchers.mappers;
 import java.time.LocalDate;
 import org.apache.lucene.document.Document;
 import org.springframework.stereotype.Component;
-import uk.ac.ebi.biostudies.index_service.search.engine.SubmissionSearchHit;
-import uk.ac.ebi.biostudies.index_service.search.searchers.DocumentMapper;
+import uk.ac.ebi.biostudies.index_service.search.searchers.SubmissionSearchHit;
+import uk.ac.ebi.biostudies.index_service.search.engine.DocumentMapper;
 
 @Component
 public class SubmissionDocumentMapper implements DocumentMapper<SubmissionSearchHit> {

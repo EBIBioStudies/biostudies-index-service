@@ -121,8 +121,8 @@ public class EFOExpanderIndexer {
     // Add synonyms as both searchable keys and expansion values
     for (String syn : synonyms) {
       if (!isStopExpansionTerm(syn)) {
-        addExpansionField(doc, EFOIndexFields.TERM, syn);
-        addExpansionField(doc, EFOIndexFields.EFO, syn);
+        addExpansionField(doc, EFOField.QE_TERM.getFieldName(), syn);
+        addExpansionField(doc, EFOField.QE_EFO.getFieldName(), syn);
         termCount++;
       }
     }
@@ -130,14 +130,14 @@ public class EFOExpanderIndexer {
     // Add children as expansion values only
     for (String child : childTerms) {
       if (!isStopExpansionTerm(child)) {
-        addExpansionField(doc, EFOIndexFields.EFO, child);
+        addExpansionField(doc, EFOField.QE_EFO.getFieldName(), child);
         childCount++;
       }
     }
 
     // Add primary term as searchable key
     if (!isStopExpansionTerm(term)) {
-      addExpansionField(doc, EFOIndexFields.TERM, term);
+      addExpansionField(doc, EFOField.QE_TERM.getFieldName(), term);
       termCount++;
     }
 

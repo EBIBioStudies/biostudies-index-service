@@ -31,6 +31,12 @@ public enum EFOField {
   /** Parent node IDs (superClassOf) */
   PARENT("parent"),
 
+  /** Query extension term */
+  QE_TERM("qe.term"),
+
+  /** Query extension EFO */
+  QE_EFO("qe.efo"),
+
   /** Aggregated field (all terms + alts) */
   ALL("all");
 
