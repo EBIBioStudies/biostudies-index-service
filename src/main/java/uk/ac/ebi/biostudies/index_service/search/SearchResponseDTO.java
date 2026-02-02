@@ -3,6 +3,7 @@ package uk.ac.ebi.biostudies.index_service.search;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import uk.ac.ebi.biostudies.index_service.search.engine.SubmissionSearchHit;
 
 /**
  * DTO representing paginated search results with facets and query expansion metadata.
@@ -18,7 +19,6 @@ import java.util.Set;
  * @param expandedSynonyms list of expanded synonym terms
  * @param query the processed query string
  * @param facets map of facet names to their selected values
- * @param facetDimensions dimensions
  * @param hits list of search result documents
  */
 public record SearchResponseDTO(
@@ -33,5 +33,4 @@ public record SearchResponseDTO(
     Set<String> expandedSynonyms,
     String query,
     Map<String, List<String>> facets,
-    //List<FacetDimensionDTO> facetDimensions,
-    List<SearchHit> hits) {}
+    List<SubmissionSearchHit> hits) {}

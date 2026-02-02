@@ -18,6 +18,7 @@ import uk.ac.ebi.biostudies.index_service.Constants;
 import uk.ac.ebi.biostudies.index_service.index.IndexName;
 import uk.ac.ebi.biostudies.index_service.index.management.IndexManager;
 import uk.ac.ebi.biostudies.index_service.search.engine.PaginatedResult;
+import uk.ac.ebi.biostudies.index_service.search.engine.SubmissionSearchHit;
 import uk.ac.ebi.biostudies.index_service.search.query.QueryResult;
 
 /**
@@ -84,15 +85,15 @@ public class SearchResponseProcessor {
    */
   public SearchResponseDTO buildEnrichedResponse(
       SearchRequest request,
-      PaginatedResult result,
+      PaginatedResult<SubmissionSearchHit> result,
       String originalQueryString,
       QueryResult queryResult,
       DrillDownQuery drillDownQuery) {
 
     // 1. Get hits from the paginated result
-    List<SearchHit> hits = result.hits();
+    List<SubmissionSearchHit> hits = result.results();
     // 2. Apply snippet extraction to the content field
-    List<SearchHit> hitsWithSnippets = extractSnippets(hits, queryResult.getQuery());
+    List<SubmissionSearchHit> hitsWithSnippets = extractSnippets(hits, queryResult.getQuery());
     log.debug("Extracted snippets for {} hits", hitsWithSnippets.size());
 
     // 3. Get spelling suggestions if needed
@@ -239,7 +240,7 @@ public class SearchResponseProcessor {
    * @param query the Lucene query used for highlighting term matches
    * @return new list of search hits with content replaced by highlighted snippets
    */
-  private List<SearchHit> extractSnippets(List<SearchHit> hits, Query query) {
+  private List<SubmissionSearchHit> extractSnippets(List<SubmissionSearchHit> hits, Query query) {
     return hits.stream().map(hit -> extractSnippet(hit, query)).toList();
   }
 
@@ -253,7 +254,7 @@ public class SearchResponseProcessor {
    * @param query the Lucene query for identifying terms to highlight
    * @return a new SearchHit with content replaced by an extracted snippet
    */
-  private SearchHit extractSnippet(SearchHit hit, Query query) {
+  private SubmissionSearchHit extractSnippet(SubmissionSearchHit hit, Query query) {
     String snippet =
         snippetExtractor.extractSnippet(
             query,
@@ -263,7 +264,7 @@ public class SearchResponseProcessor {
             );
 
     // Create new immutable SearchHit with snippet
-    return new SearchHit(
+    return new SubmissionSearchHit(
         hit.accession(),
         hit.type(),
         hit.title(),
@@ -302,9 +303,9 @@ public class SearchResponseProcessor {
   private SearchResponseDTO buildSearchResponse(
       SearchRequest request,
       QueryResult queryResult,
-      PaginatedResult paginatedResult,
+      PaginatedResult<SubmissionSearchHit> paginatedResult,
       List<FacetDimensionDTO> facets,
-      List<SearchHit> hits,
+      List<SubmissionSearchHit> hits,
       List<String> suggestions) {
 
     // Match old behavior: query is null when highlighting disabled (browsing mode)

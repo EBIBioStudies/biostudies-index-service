@@ -1,6 +1,5 @@
 package uk.ac.ebi.biostudies.index_service.search;
 
-import java.io.IOException;
 import java.util.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.lucene.facet.DrillDownQuery;
@@ -9,16 +8,19 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.springframework.stereotype.Service;
 import uk.ac.ebi.biostudies.index_service.TaxonomyManager;
-import uk.ac.ebi.biostudies.index_service.index.IndexName;
+import uk.ac.ebi.biostudies.index_service.exceptions.SearchException;
 import uk.ac.ebi.biostudies.index_service.registry.model.CollectionRegistry;
 import uk.ac.ebi.biostudies.index_service.registry.model.PropertyDescriptor;
 import uk.ac.ebi.biostudies.index_service.registry.service.CollectionRegistryService;
 import uk.ac.ebi.biostudies.index_service.search.engine.LuceneQueryExecutor;
 import uk.ac.ebi.biostudies.index_service.search.engine.PaginatedResult;
+import uk.ac.ebi.biostudies.index_service.search.engine.SearchCriteria;
+import uk.ac.ebi.biostudies.index_service.search.engine.SubmissionSearchHit;
 import uk.ac.ebi.biostudies.index_service.search.preprocessing.QueryPreprocessor;
 import uk.ac.ebi.biostudies.index_service.search.query.FacetService;
 import uk.ac.ebi.biostudies.index_service.search.query.LuceneQueryBuilder;
 import uk.ac.ebi.biostudies.index_service.search.query.QueryResult;
+import uk.ac.ebi.biostudies.index_service.search.searchers.SubmissionSearcher;
 import uk.ac.ebi.biostudies.index_service.search.security.SecurityQueryBuilder;
 
 /**
@@ -61,6 +63,7 @@ public class SearchService {
   private final SecurityQueryBuilder securityQueryBuilder;
   private final FacetService facetService;
   private final LuceneQueryExecutor queryExecutor;
+  private final SubmissionSearcher submissionSearcher;
   private final TaxonomyManager taxonomyManager;
   private final CollectionRegistryService collectionRegistryService;
   private final SearchResponseProcessor searchResponseProcessor;
@@ -82,7 +85,7 @@ public class SearchService {
       LuceneQueryBuilder luceneQueryBuilder,
       SecurityQueryBuilder securityQueryBuilder,
       FacetService facetService,
-      LuceneQueryExecutor queryExecutor,
+      LuceneQueryExecutor queryExecutor, SubmissionSearcher submissionSearcher,
       TaxonomyManager taxonomyManager,
       CollectionRegistryService collectionRegistryService,
       SearchResponseProcessor searchResponseProcessor) {
@@ -91,6 +94,7 @@ public class SearchService {
     this.securityQueryBuilder = securityQueryBuilder;
     this.facetService = facetService;
     this.queryExecutor = queryExecutor;
+    this.submissionSearcher = submissionSearcher;
     this.taxonomyManager = taxonomyManager;
     this.collectionRegistryService = collectionRegistryService;
     this.searchResponseProcessor = searchResponseProcessor;
@@ -150,14 +154,18 @@ public class SearchService {
       int pageSize = request.getPageSize() != null ? request.getPageSize() : DEFAULT_PAGE_SIZE;
       Sort sort = buildSort(request.getSortBy(), request.getSortOrder());
 
-      PaginatedResult paginatedResult =
-          queryExecutor.execute(IndexName.SUBMISSION, drillDownQuery, page, pageSize, sort);
+      SearchCriteria searchCriteria = new SearchCriteria.Builder(drillDownQuery)
+          .page(page, pageSize)
+          .sort(sort)
+          .build();
+      PaginatedResult<SubmissionSearchHit> paginatedResult = submissionSearcher.search(searchCriteria);
+
       log.info(
           "Search completed: {} total hits, returning page {}/{} ({} hits)",
           paginatedResult.totalHits(),
           page,
           pageSize,
-          paginatedResult.hits().size());
+          paginatedResult.results().size());
 
       // 6. Enhance results: apply snippets, spell suggestions, term filtering, and facet
       // formatting
@@ -169,14 +177,14 @@ public class SearchService {
       return searchResponseProcessor.buildEnrichedResponse(
           request, paginatedResult, request.getQuery(), queryResult, drillDownQuery);
 
-    } catch (IOException ex) {
-      log.error("IO error during search execution", ex);
+    } catch (SearchException se) {
+      log.error("IO error during search execution", se);
       return searchResponseProcessor.buildErrorResponse(
-          rawRequest, "Search failed due to IO error");
-    } catch (Exception ex) {
-      log.error("Unexpected error during search execution", ex);
+          rawRequest, "Search failed: " + se.getMessage());
+    } catch (Exception e) {
+      log.error("Unexpected error during search execution", e);
       return searchResponseProcessor.buildErrorResponse(
-          rawRequest, "Search failed: " + ex.getMessage());
+          rawRequest, "Search failed: " + e.getMessage());
     }
   }
 

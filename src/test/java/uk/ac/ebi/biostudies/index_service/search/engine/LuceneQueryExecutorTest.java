@@ -3,10 +3,10 @@ package uk.ac.ebi.biostudies.index_service.search.engine;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 import java.io.IOException;
+import java.util.List;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -61,12 +61,13 @@ class LuceneQueryExecutorTest {
   class UnitTests {
 
     @Test
-    @DisplayName("Should execute query and return paginated results with SearchHits")
-    void shouldExecuteQueryAndReturnPaginatedResults() throws IOException {
+    @DisplayName("Should execute paginated query and return results with Documents")
+    void shouldExecutePaginatedQueryAndReturnResults() throws IOException {
       // Arrange
       Query query = new MatchAllDocsQuery();
-      int page = 1;
-      int pageSize = 10;
+      SearchCriteria criteria = new SearchCriteria.Builder(query)
+          .page(1, 10)
+          .build();
 
       ScoreDoc[] scoreDocs = new ScoreDoc[10];
       for (int i = 0; i < 10; i++) {
@@ -78,29 +79,65 @@ class LuceneQueryExecutorTest {
       when(mockSearcher.search(query, 10)).thenReturn(topDocs);
       when(mockSearcher.storedFields()).thenReturn(mockStoredFields);
 
-      // Mock documents with required fields
       for (int i = 0; i < 10; i++) {
         Document doc = createMockDocument("S-ACC" + i, "study", "Title " + i);
         when(mockStoredFields.document(i)).thenReturn(doc);
       }
 
       // Act
-      PaginatedResult result = executor.execute(IndexName.SUBMISSION, query, page, pageSize);
+      PaginatedResult<Document> result = executor.execute(IndexName.SUBMISSION, criteria);
 
       // Assert
       assertNotNull(result);
       assertEquals(1, result.page());
       assertEquals(10, result.pageSize());
       assertEquals(100, result.totalHits());
-      assertEquals(10, result.hits().size());
+      assertEquals(10, result.results().size());
       assertTrue(result.isTotalHitsExact());
 
-      // Verify first hit
-      assertEquals("S-ACC0", result.hits().get(0).accession());
-      assertEquals("study", result.hits().get(0).type());
+      Document firstDoc = result.results().get(0);
+      assertEquals("S-ACC0", firstDoc.get("accession"));
+      assertEquals("study", firstDoc.get("type"));
+      assertEquals("Title 0", firstDoc.get("title"));
 
       verify(indexManager).acquireSearcher(IndexName.SUBMISSION);
       verify(indexManager).releaseSearcher(IndexName.SUBMISSION, mockSearcher);
+    }
+
+    @Test
+    @DisplayName("Should execute non-paginated query and return all results")
+    void shouldExecuteNonPaginatedQuery() throws IOException {
+      // Arrange
+      Query query = new MatchAllDocsQuery();
+      SearchCriteria criteria = SearchCriteria.of(query);
+
+      ScoreDoc[] scoreDocs = new ScoreDoc[50];
+      for (int i = 0; i < 50; i++) {
+        scoreDocs[i] = new ScoreDoc(i, 1.0f);
+      }
+      TopDocs topDocs = new TopDocs(new TotalHits(50, TotalHits.Relation.EQUAL_TO), scoreDocs);
+
+      when(indexManager.acquireSearcher(IndexName.SUBMISSION)).thenReturn(mockSearcher);
+      when(mockSearcher.search(query, 10000)).thenReturn(topDocs);
+      when(mockSearcher.storedFields()).thenReturn(mockStoredFields);
+
+      for (int i = 0; i < 50; i++) {
+        Document doc = createMockDocument("S-ACC" + i, "study", "Title " + i);
+        when(mockStoredFields.document(i)).thenReturn(doc);
+      }
+
+      // Act
+      PaginatedResult<Document> result = executor.execute(IndexName.SUBMISSION, criteria);
+
+      // Assert
+      assertNotNull(result);
+      assertEquals(1, result.page());
+      assertEquals(50, result.pageSize());
+      assertEquals(50, result.results().size());
+      assertEquals("S-ACC0", result.results().get(0).get("accession"));
+      assertEquals("S-ACC49", result.results().get(49).get("accession"));
+
+      verify(mockSearcher).search(query, 10000);
     }
 
     @Test
@@ -109,6 +146,10 @@ class LuceneQueryExecutorTest {
       // Arrange
       Query query = new MatchAllDocsQuery();
       Sort sort = new Sort(new SortField("title", SortField.Type.STRING));
+      SearchCriteria criteria = new SearchCriteria.Builder(query)
+          .page(1, 20)
+          .sort(sort)
+          .build();
 
       ScoreDoc[] scoreDocs = new ScoreDoc[5];
       for (int i = 0; i < 5; i++) {
@@ -130,22 +171,60 @@ class LuceneQueryExecutorTest {
       }
 
       // Act
-      PaginatedResult result = executor.execute(IndexName.SUBMISSION, query, 1, 20, sort);
+      PaginatedResult<Document> result = executor.execute(IndexName.SUBMISSION, criteria);
 
       // Assert
       assertNotNull(result);
       assertEquals(50, result.totalHits());
-      assertEquals(5, result.hits().size());
+      assertEquals(5, result.results().size());
       verify(mockSearcher).search(query, 20, sort);
     }
 
     @Test
-    @DisplayName("Should handle page 2 correctly - only return current page hits")
+    @DisplayName("Should execute non-paginated query with sorting")
+    void shouldExecuteNonPaginatedQueryWithSorting() throws IOException {
+      // Arrange
+      Query query = new MatchAllDocsQuery();
+      Sort sort = new Sort(new SortField("title", SortField.Type.STRING));
+      SearchCriteria criteria = new SearchCriteria.Builder(query)
+          .sort(sort)
+          .build();
+
+      ScoreDoc[] scoreDocs = new ScoreDoc[25];
+      for (int i = 0; i < 25; i++) {
+        scoreDocs[i] = new ScoreDoc(i, 1.0f);
+      }
+      TopFieldDocs topFieldDocs =
+          new TopFieldDocs(
+              new TotalHits(25, TotalHits.Relation.EQUAL_TO),
+              scoreDocs,
+              new SortField[] {new SortField("title", SortField.Type.STRING)});
+
+      when(indexManager.acquireSearcher(IndexName.SUBMISSION)).thenReturn(mockSearcher);
+      when(mockSearcher.search(query, 10000, sort)).thenReturn(topFieldDocs);
+      when(mockSearcher.storedFields()).thenReturn(mockStoredFields);
+
+      for (int i = 0; i < 25; i++) {
+        Document doc = createMockDocument("S-ACC" + i, "study", "Title " + i);
+        when(mockStoredFields.document(i)).thenReturn(doc);
+      }
+
+      // Act
+      PaginatedResult<Document> result = executor.execute(IndexName.SUBMISSION, criteria);
+
+      // Assert
+      assertEquals(25, result.results().size());
+      verify(mockSearcher).search(query, 10000, sort);
+    }
+
+    @Test
+    @DisplayName("Should handle page 2 correctly - only return current page documents")
     void shouldHandleSecondPageCorrectly() throws IOException {
       // Arrange
       Query query = new MatchAllDocsQuery();
-      int page = 2;
-      int pageSize = 20;
+      SearchCriteria criteria = new SearchCriteria.Builder(query)
+          .page(2, 20)
+          .build();
 
       ScoreDoc[] scoreDocs = new ScoreDoc[40];
       for (int i = 0; i < 40; i++) {
@@ -157,53 +236,41 @@ class LuceneQueryExecutorTest {
       when(mockSearcher.search(query, 40)).thenReturn(topDocs);
       when(mockSearcher.storedFields()).thenReturn(mockStoredFields);
 
-      // Mock documents for page 2 only (indices 20-39)
       for (int i = 20; i < 40; i++) {
         Document doc = createMockDocument("S-ACC" + i, "study", "Title " + i);
         when(mockStoredFields.document(i)).thenReturn(doc);
       }
 
       // Act
-      PaginatedResult result = executor.execute(IndexName.SUBMISSION, query, page, pageSize);
+      PaginatedResult<Document> result = executor.execute(IndexName.SUBMISSION, criteria);
 
       // Assert
       assertEquals(2, result.page());
       assertEquals(20, result.pageSize());
-      assertEquals(20, result.hits().size()); // Should have 20 hits for page 2
-      assertEquals("S-ACC20", result.hits().get(0).accession()); // First doc of page 2
-      assertEquals("S-ACC39", result.hits().get(19).accession()); // Last doc of page 2
+      assertEquals(20, result.results().size());
+      assertEquals("S-ACC20", result.results().get(0).get("accession"));
+      assertEquals("S-ACC39", result.results().get(19).get("accession"));
       verify(mockSearcher).search(query, 40);
     }
 
     @Test
-    @DisplayName("Should limit page size to MAX_PAGE_SIZE")
-    void shouldLimitPageSizeToMaxPageSize() throws IOException {
+    @DisplayName("Should throw IllegalArgumentException for excessive page size")
+    void shouldThrowExceptionForExcessivePageSize() throws IOException {
       // Arrange
       Query query = new MatchAllDocsQuery();
-      int excessivePageSize = 5000; // Exceeds MAX_PAGE_SIZE of 1000
+      SearchCriteria criteria = new SearchCriteria.Builder(query)
+          .page(1, 5000) // Exceeds MAX_PAGE_SIZE of 1000
+          .build();
 
-      ScoreDoc[] scoreDocs = new ScoreDoc[1000];
-      for (int i = 0; i < 1000; i++) {
-        scoreDocs[i] = new ScoreDoc(i, 1.0f);
-      }
-      TopDocs topDocs = new TopDocs(new TotalHits(5000, TotalHits.Relation.EQUAL_TO), scoreDocs);
+      // Act & Assert
+      IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+          () -> executor.execute(IndexName.SUBMISSION, criteria));
 
-      when(indexManager.acquireSearcher(IndexName.SUBMISSION)).thenReturn(mockSearcher);
-      when(mockSearcher.search(eq(query), anyInt())).thenReturn(topDocs);
-      when(mockSearcher.storedFields()).thenReturn(mockStoredFields);
+      assertTrue(ex.getMessage().contains("pageSize exceeds maximum"));
 
-      for (int i = 0; i < 1000; i++) {
-        Document doc = createMockDocument("S-ACC" + i, "study", "Title " + i);
-        when(mockStoredFields.document(i)).thenReturn(doc);
-      }
-
-      // Act
-      PaginatedResult result = executor.execute(IndexName.SUBMISSION, query, 1, excessivePageSize);
-
-      // Assert
-      assertEquals(1000, result.pageSize()); // Limited to MAX_PAGE_SIZE
-      assertEquals(1000, result.hits().size());
-      verify(mockSearcher).search(query, 1000);
+      // Validation fails before acquiring a searcher, so no acquire/release should happen
+      verify(indexManager, never()).acquireSearcher(any());
+      verify(indexManager, never()).releaseSearcher(any(), any());
     }
 
     @Test
@@ -211,13 +278,15 @@ class LuceneQueryExecutorTest {
     void shouldAlwaysReleaseSearcherOnException() throws IOException {
       // Arrange
       Query query = new MatchAllDocsQuery();
+      SearchCriteria criteria = SearchCriteria.of(query);
 
       when(indexManager.acquireSearcher(IndexName.SUBMISSION)).thenReturn(mockSearcher);
       when(mockSearcher.search(any(Query.class), anyInt()))
           .thenThrow(new IOException("Search failed"));
 
       // Act & Assert
-      assertThrows(IOException.class, () -> executor.execute(IndexName.SUBMISSION, query, 1, 10));
+      assertThrows(IOException.class,
+          () -> executor.execute(IndexName.SUBMISSION, criteria));
 
       verify(indexManager).releaseSearcher(IndexName.SUBMISSION, mockSearcher);
     }
@@ -227,6 +296,9 @@ class LuceneQueryExecutorTest {
     void shouldHandleEstimateTotalHits() throws IOException {
       // Arrange
       Query query = new MatchAllDocsQuery();
+      SearchCriteria criteria = new SearchCriteria.Builder(query)
+          .page(1, 10)
+          .build();
 
       ScoreDoc[] scoreDocs = new ScoreDoc[10];
       for (int i = 0; i < 10; i++) {
@@ -245,11 +317,41 @@ class LuceneQueryExecutorTest {
       }
 
       // Act
-      PaginatedResult result = executor.execute(IndexName.SUBMISSION, query, 1, 10);
+      PaginatedResult<Document> result = executor.execute(IndexName.SUBMISSION, criteria);
 
       // Assert
       assertFalse(result.isTotalHitsExact());
       assertEquals(1000, result.totalHits());
+    }
+
+    @Test
+    @DisplayName("Non-paginated query should limit to DEFAULT_MAX_RESULTS")
+    void nonPaginatedQueryShouldLimitToDefaultMaxResults() throws IOException {
+      // Arrange
+      Query query = new MatchAllDocsQuery();
+      SearchCriteria criteria = SearchCriteria.of(query);
+
+      ScoreDoc[] scoreDocs = new ScoreDoc[10000];
+      for (int i = 0; i < 10000; i++) {
+        scoreDocs[i] = new ScoreDoc(i, 1.0f);
+      }
+      TopDocs topDocs = new TopDocs(new TotalHits(50000, TotalHits.Relation.EQUAL_TO), scoreDocs);
+
+      when(indexManager.acquireSearcher(IndexName.SUBMISSION)).thenReturn(mockSearcher);
+      when(mockSearcher.search(query, 10000)).thenReturn(topDocs);
+      when(mockSearcher.storedFields()).thenReturn(mockStoredFields);
+
+      for (int i = 0; i < 10000; i++) {
+        Document doc = createMockDocument("S-ACC" + i, "study", "Title " + i);
+        when(mockStoredFields.document(i)).thenReturn(doc);
+      }
+
+      // Act
+      PaginatedResult<Document> result = executor.execute(IndexName.SUBMISSION, criteria);
+
+      // Assert
+      assertEquals(10000, result.results().size());
+      verify(mockSearcher).search(query, 10000);
     }
 
     private Document createMockDocument(String accession, String type, String title) {
@@ -269,6 +371,54 @@ class LuceneQueryExecutorTest {
   }
 
   @Nested
+  @DisplayName("Input Validation Tests")
+  class ValidationTests {
+
+    @Test
+    @DisplayName("Should throw NullPointerException when indexName is null")
+    void shouldThrowExceptionWhenIndexNameIsNull() {
+      SearchCriteria criteria = SearchCriteria.of(new MatchAllDocsQuery());
+
+      assertThrows(NullPointerException.class,
+          () -> executor.execute(null, criteria));
+    }
+
+    @Test
+    @DisplayName("Should throw NullPointerException when criteria is null")
+    void shouldThrowExceptionWhenCriteriaIsNull() {
+      assertThrows(NullPointerException.class,
+          () -> executor.execute(IndexName.SUBMISSION, null));
+    }
+
+    @Test
+    @DisplayName("Should throw NullPointerException when IndexManager is null in constructor")
+    void shouldThrowExceptionWhenIndexManagerIsNull() {
+      assertThrows(NullPointerException.class,
+          () -> new LuceneQueryExecutor(null));
+    }
+
+    @Test
+    @DisplayName("Should throw IllegalArgumentException for deep pagination")
+    void shouldThrowExceptionForDeepPagination() throws IOException {
+      // Arrange
+      Query query = new MatchAllDocsQuery();
+      SearchCriteria criteria = new SearchCriteria.Builder(query)
+          .page(100, 600) // 100 * 600 = 60,000 > MAX_TOTAL_DOCS_FOR_PAGINATION (50,000)
+          .build();
+
+      // Act & Assert
+      IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+          () -> executor.execute(IndexName.SUBMISSION, criteria));
+
+      assertTrue(ex.getMessage().contains("Deep pagination limit exceeded"));
+
+      // Validation fails before acquiring a searcher, so no acquire/release should happen
+      verify(indexManager, never()).acquireSearcher(any());
+      verify(indexManager, never()).releaseSearcher(any(), any());
+    }
+  }
+
+  @Nested
   @DisplayName("Integration Tests with RAMDirectory")
   class IntegrationTests {
 
@@ -279,12 +429,10 @@ class LuceneQueryExecutorTest {
 
     @BeforeEach
     void setUpIndex() throws IOException {
-      // Create in-memory directory and writer
       directory = new ByteBuffersDirectory();
       IndexWriterConfig config = new IndexWriterConfig(new StandardAnalyzer());
       writer = new IndexWriter(directory, config);
 
-      // Add test documents with all required fields
       addDocument(
           "S-DOC1", "study", "Java programming tutorial", "Smith J", "java", 100L, 5, 10, 50);
       addDocument(
@@ -310,7 +458,6 @@ class LuceneQueryExecutorTest {
       writer.commit();
       writer.close();
 
-      // Open reader and searcher
       reader = DirectoryReader.open(directory);
       searcher = new IndexSearcher(reader);
     }
@@ -353,30 +500,30 @@ class LuceneQueryExecutorTest {
       Query query = new MatchAllDocsQuery();
       int pageSize = 10;
 
-      // Act - Page 1
-      PaginatedResult page1 = executor.execute(IndexName.SUBMISSION, query, 1, pageSize);
+      // Act & Assert - Page 1
+      SearchCriteria page1Criteria = new SearchCriteria.Builder(query).page(1, pageSize).build();
+      PaginatedResult<Document> page1 = executor.execute(IndexName.SUBMISSION, page1Criteria);
 
-      // Assert Page 1
       assertEquals(1, page1.page());
       assertEquals(10, page1.pageSize());
       assertEquals(50, page1.totalHits());
       assertTrue(page1.isTotalHitsExact());
-      assertEquals(10, page1.hits().size());
-      assertEquals("S-DOC1", page1.hits().get(0).accession());
+      assertEquals(10, page1.results().size());
+      assertEquals("S-DOC1", page1.results().get(0).get("accession"));
 
-      // Act - Page 2
-      PaginatedResult page2 = executor.execute(IndexName.SUBMISSION, query, 2, pageSize);
+      // Act & Assert - Page 2
+      SearchCriteria page2Criteria = new SearchCriteria.Builder(query).page(2, pageSize).build();
+      PaginatedResult<Document> page2 = executor.execute(IndexName.SUBMISSION, page2Criteria);
 
-      // Assert Page 2
       assertEquals(2, page2.page());
-      assertEquals(10, page2.hits().size());
+      assertEquals(10, page2.results().size());
 
-      // Act - Page 5 (last page)
-      PaginatedResult page5 = executor.execute(IndexName.SUBMISSION, query, 5, pageSize);
+      // Act & Assert - Page 5 (last page)
+      SearchCriteria page5Criteria = new SearchCriteria.Builder(query).page(5, pageSize).build();
+      PaginatedResult<Document> page5 = executor.execute(IndexName.SUBMISSION, page5Criteria);
 
-      // Assert Page 5
       assertEquals(5, page5.page());
-      assertEquals(10, page5.hits().size());
+      assertEquals(10, page5.results().size());
     }
 
     @Test
@@ -386,16 +533,22 @@ class LuceneQueryExecutorTest {
       when(indexManager.acquireSearcher(IndexName.SUBMISSION)).thenReturn(searcher);
 
       Query query = new TermQuery(new Term("category", "java"));
+      SearchCriteria criteria = new SearchCriteria.Builder(query).page(1, 10).build();
 
       // Act
-      PaginatedResult result = executor.execute(IndexName.SUBMISSION, query, 1, 10);
+      PaginatedResult<Document> result = executor.execute(IndexName.SUBMISSION, criteria);
 
       // Assert
-      assertEquals(3, result.totalHits()); // S-DOC1, S-DOC3, S-DOC5 have category "java"
-      assertEquals(3, result.hits().size());
-      assertTrue(result.hits().stream().anyMatch(h -> h.accession().equals("S-DOC1")));
-      assertTrue(result.hits().stream().anyMatch(h -> h.accession().equals("S-DOC3")));
-      assertTrue(result.hits().stream().anyMatch(h -> h.accession().equals("S-DOC5")));
+      assertEquals(3, result.totalHits());
+      assertEquals(3, result.results().size());
+
+      List<String> accessions = result.results().stream()
+          .map(doc -> doc.get("accession"))
+          .toList();
+
+      assertTrue(accessions.contains("S-DOC1"));
+      assertTrue(accessions.contains("S-DOC3"));
+      assertTrue(accessions.contains("S-DOC5"));
     }
 
     @Test
@@ -405,19 +558,22 @@ class LuceneQueryExecutorTest {
       when(indexManager.acquireSearcher(IndexName.SUBMISSION)).thenReturn(searcher);
 
       Query query = new TermQuery(new Term("category", "java"));
-      Sort sort = new Sort(new SortField("timestamp", SortField.Type.LONG, true)); // descending
+      Sort sort = new Sort(new SortField("timestamp", SortField.Type.LONG, true));
+      SearchCriteria criteria = new SearchCriteria.Builder(query)
+          .page(1, 10)
+          .sort(sort)
+          .build();
 
       // Act
-      PaginatedResult result = executor.execute(IndexName.SUBMISSION, query, 1, 10, sort);
+      PaginatedResult<Document> result = executor.execute(IndexName.SUBMISSION, criteria);
 
       // Assert
       assertEquals(3, result.totalHits());
-      assertEquals(3, result.hits().size());
+      assertEquals(3, result.results().size());
 
-      // Verify order: S-DOC5 (250), S-DOC3 (150), S-DOC1 (100)
-      assertEquals("S-DOC5", result.hits().get(0).accession());
-      assertEquals("S-DOC3", result.hits().get(1).accession());
-      assertEquals("S-DOC1", result.hits().get(2).accession());
+      assertEquals("S-DOC5", result.results().get(0).get("accession"));
+      assertEquals("S-DOC3", result.results().get(1).get("accession"));
+      assertEquals("S-DOC1", result.results().get(2).get("accession"));
     }
 
     @Test
@@ -427,14 +583,15 @@ class LuceneQueryExecutorTest {
       when(indexManager.acquireSearcher(IndexName.SUBMISSION)).thenReturn(searcher);
 
       Query query = new MatchAllDocsQuery();
+      SearchCriteria criteria = new SearchCriteria.Builder(query).page(10, 10).build();
 
-      // Act - Request page 10 with pageSize 10 (but only 50 docs exist)
-      PaginatedResult result = executor.execute(IndexName.SUBMISSION, query, 10, 10);
+      // Act
+      PaginatedResult<Document> result = executor.execute(IndexName.SUBMISSION, criteria);
 
       // Assert
       assertEquals(10, result.page());
       assertEquals(50, result.totalHits());
-      assertEquals(0, result.hits().size()); // No docs on this page
+      assertEquals(0, result.results().size());
     }
 
     @Test
@@ -444,14 +601,15 @@ class LuceneQueryExecutorTest {
       when(indexManager.acquireSearcher(IndexName.SUBMISSION)).thenReturn(searcher);
 
       Query query = new MatchAllDocsQuery();
+      SearchCriteria criteria = new SearchCriteria.Builder(query).page(4, 15).build();
 
-      // Act - Page 4 with pageSize 15 (should have only 5 docs: 46-50)
-      PaginatedResult result = executor.execute(IndexName.SUBMISSION, query, 4, 15);
+      // Act
+      PaginatedResult<Document> result = executor.execute(IndexName.SUBMISSION, criteria);
 
       // Assert
       assertEquals(4, result.page());
       assertEquals(50, result.totalHits());
-      assertEquals(5, result.hits().size()); // Only 5 docs remaining (46-50)
+      assertEquals(5, result.results().size());
     }
 
     @Test
@@ -461,15 +619,63 @@ class LuceneQueryExecutorTest {
       when(indexManager.acquireSearcher(IndexName.FILES)).thenReturn(searcher);
 
       Query query = new MatchAllDocsQuery();
+      SearchCriteria criteria = new SearchCriteria.Builder(query).page(1, 10).build();
 
       // Act
-      PaginatedResult result = executor.execute(IndexName.FILES, query, 1, 10);
+      PaginatedResult<Document> result = executor.execute(IndexName.FILES, criteria);
 
       // Assert
       assertNotNull(result);
-      assertEquals(10, result.hits().size());
+      assertEquals(10, result.results().size());
       verify(indexManager).acquireSearcher(IndexName.FILES);
       verify(indexManager).releaseSearcher(IndexName.FILES, searcher);
+    }
+
+    @Test
+    @DisplayName("Non-paginated query should return all documents")
+    void nonPaginatedQueryShouldReturnAllDocuments() throws IOException {
+      // Arrange
+      when(indexManager.acquireSearcher(IndexName.SUBMISSION)).thenReturn(searcher);
+
+      Query query = new MatchAllDocsQuery();
+      SearchCriteria criteria = SearchCriteria.of(query);
+
+      // Act
+      PaginatedResult<Document> result = executor.execute(IndexName.SUBMISSION, criteria);
+
+      // Assert
+      assertNotNull(result);
+      assertEquals(50, result.results().size());
+      assertEquals("S-DOC1", result.results().get(0).get("accession"));
+      assertEquals("S-DOC50", result.results().get(49).get("accession"));
+
+      verify(indexManager).acquireSearcher(IndexName.SUBMISSION);
+      verify(indexManager).releaseSearcher(IndexName.SUBMISSION, searcher);
+    }
+
+    @Test
+    @DisplayName("Non-paginated query with term filter should return matching documents")
+    void nonPaginatedQueryWithTermFilterShouldWork() throws IOException {
+      // Arrange
+      when(indexManager.acquireSearcher(IndexName.SUBMISSION)).thenReturn(searcher);
+
+      Query query = new TermQuery(new Term("category", "java"));
+      SearchCriteria criteria = SearchCriteria.of(query);
+
+      // Act
+      PaginatedResult<Document> result = executor.execute(IndexName.SUBMISSION, criteria);
+
+      // Assert
+      assertNotNull(result);
+      assertEquals(3, result.results().size());
+
+      List<String> accessions = result.results().stream()
+          .map(doc -> doc.get("accession"))
+          .toList();
+
+      assertTrue(accessions.contains("S-DOC1"));
+      assertTrue(accessions.contains("S-DOC3"));
+      assertTrue(accessions.contains("S-DOC5"));
     }
   }
 
@@ -478,48 +684,29 @@ class LuceneQueryExecutorTest {
   class PaginatedResultTests {
 
     @Test
-    @DisplayName("Should calculate total pages correctly")
-    void shouldCalculateTotalPagesCorrectly() {
-      // Arrange & Act
-      PaginatedResult result1 = new PaginatedResult(java.util.List.of(), 1, 20, 100, true);
-      PaginatedResult result2 = new PaginatedResult(java.util.List.of(), 1, 20, 95, true);
-      PaginatedResult result3 = new PaginatedResult(java.util.List.of(), 1, 10, 53, true);
+    @DisplayName("Should use map method to transform documents")
+    void shouldUseMapMethodToTransformDocuments() {
+      // Arrange
+      Document doc1 = new Document();
+      doc1.add(new StringField("accession", "S-DOC1", Field.Store.YES));
+
+      Document doc2 = new Document();
+      doc2.add(new StringField("accession", "S-DOC2", Field.Store.YES));
+
+      PaginatedResult<Document> docResult =
+          new PaginatedResult<>(List.of(doc1, doc2), 1, 2, 2, true);
+
+      // Act
+      PaginatedResult<String> accessionResult = docResult.map(doc -> doc.get("accession"));
 
       // Assert
-      assertEquals(5, result1.getTotalPages()); // 100 / 20 = 5
-      assertEquals(5, result2.getTotalPages()); // 95 / 20 = 4.75 -> 5
-      assertEquals(6, result3.getTotalPages()); // 53 / 10 = 5.3 -> 6
-    }
-
-    @Test
-    @DisplayName("Should correctly identify if next page exists")
-    void shouldIdentifyNextPageExists() {
-      // Arrange & Act
-      PaginatedResult page1 = new PaginatedResult(java.util.List.of(), 1, 20, 100, true);
-      PaginatedResult page4 = new PaginatedResult(java.util.List.of(), 4, 20, 100, true);
-      PaginatedResult lastPage = new PaginatedResult(java.util.List.of(), 5, 20, 100, true);
-      PaginatedResult beyondLast = new PaginatedResult(java.util.List.of(), 6, 20, 100, true);
-
-      // Assert
-      assertTrue(page1.hasNextPage());   // page 1 of 5 - has next
-      assertTrue(page4.hasNextPage());   // page 4 of 5 - has next
-      assertFalse(lastPage.hasNextPage()); // page 5 of 5 - no next
-      assertFalse(beyondLast.hasNextPage()); // page 6 of 5 - beyond last
-    }
-
-
-    @Test
-    @DisplayName("Should correctly identify if previous page exists")
-    void shouldIdentifyPreviousPageExists() {
-      // Arrange & Act
-      PaginatedResult page1 = new PaginatedResult(java.util.List.of(), 1, 20, 100, true);
-      PaginatedResult page2 = new PaginatedResult(java.util.List.of(), 2, 20, 100, true);
-      PaginatedResult page5 = new PaginatedResult(java.util.List.of(), 5, 20, 100, true);
-
-      // Assert
-      assertFalse(page1.hasPreviousPage());
-      assertTrue(page2.hasPreviousPage());
-      assertTrue(page5.hasPreviousPage());
+      assertEquals(2, accessionResult.results().size());
+      assertEquals("S-DOC1", accessionResult.results().get(0));
+      assertEquals("S-DOC2", accessionResult.results().get(1));
+      assertEquals(1, accessionResult.page());
+      assertEquals(2, accessionResult.pageSize());
+      assertEquals(2, accessionResult.totalHits());
     }
   }
+
 }
