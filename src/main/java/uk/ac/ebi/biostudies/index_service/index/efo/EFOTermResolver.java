@@ -25,13 +25,6 @@ public class EFOTermResolver {
   public static final int INCLUDE_CHILD_ALT_TERMS = 8;
   public static final int INCLUDE_PART_OF_TERMS = 16;
 
-  public static final int INCLUDE_ALL =
-      INCLUDE_SELF
-          | INCLUDE_ALT_TERMS
-          | INCLUDE_CHILD_TERMS
-          | INCLUDE_CHILD_ALT_TERMS
-          | INCLUDE_PART_OF_TERMS;
-
   public static final int INCLUDE_CHILDREN =
       INCLUDE_CHILD_TERMS | INCLUDE_CHILD_ALT_TERMS | INCLUDE_PART_OF_TERMS;
 

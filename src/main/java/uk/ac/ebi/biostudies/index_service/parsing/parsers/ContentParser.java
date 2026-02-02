@@ -1,7 +1,6 @@
 package uk.ac.ebi.biostudies.index_service.parsing.parsers;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -16,19 +15,6 @@ public class ContentParser implements Parser {
 
   // JSONPath that selects all "value" fields recursively inside "section".
   private static final String SECTION_VALUES = "$.section..value";
-
-  private static final List<String> FILE_NAMES =
-      Arrays.asList(
-          "$.files[*].filePath",
-          "$.files[*].path",
-          "$..files[*].filePath",
-          "$..files[*].path",
-          "$..sections..files..filePath",
-          "$..sections..files..path",
-          "$.section.files[*][*].filePath", // Added path for nested array inside section
-          "$.section.files[*][*].path" // Added path for legacy path property inside nested array in
-                                       // section
-          );
 
   // JSONPath that selects all "url" fields recursively inside "links".
   private static final String LINK_URLS = "$..links..url";
