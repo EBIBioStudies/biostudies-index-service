@@ -382,11 +382,11 @@ class QueryExpanderTest {
       EFOExpansionTerms expansionTerms = new EFOExpansionTerms();
       expansionTerms.term = "cancer";
 
-      // Add 101 terms (exceeds MAX_EXPANSION_TERMS = 100)
-      for (int i = 0; i < 60; i++) {
+      // Add 1001 terms (exceeds MAX_EXPANSION_TERMS = 1000)
+      for (int i = 0; i < 600; i++) {
         expansionTerms.efo.add("efo_term_" + i);
       }
-      for (int i = 0; i < 41; i++) {
+      for (int i = 0; i < 401; i++) {
         expansionTerms.synonyms.add("synonym_" + i);
       }
 
@@ -398,21 +398,21 @@ class QueryExpanderTest {
       // Assert
       // Should return original query without expansion but still track the terms
       assertEquals(originalQuery, result.getQuery());
-      assertEquals(60, result.getExpandedEfoTerms().size());
-      assertEquals(41, result.getExpandedSynonyms().size());
+      assertEquals(600, result.getExpandedEfoTerms().size());
+      assertEquals(401, result.getExpandedSynonyms().size());
     }
 
     @Test
     @DisplayName("Should expand when terms equal MAX_EXPANSION_TERMS")
-    void shouldExpandWhenTermsEqualMax() throws IOException {
+    void shouldExpandWhenTermsEqualMax() {
       // Arrange
       Query originalQuery = new TermQuery(new Term("title", "disease"));
 
       EFOExpansionTerms expansionTerms = new EFOExpansionTerms();
       expansionTerms.term = "disease";
 
-      // Add exactly 100 terms
-      for (int i = 0; i < 100; i++) {
+      // Add exactly 1000 terms (MAX_EXPANSION_TERMS = 1000)
+      for (int i = 0; i < 1000; i++) {
         expansionTerms.efo.add("efo_term_" + i);
       }
 
@@ -423,7 +423,7 @@ class QueryExpanderTest {
 
       // Assert
       assertTrue(result.getQuery() instanceof BooleanQuery);
-      assertEquals(100, result.getExpandedEfoTerms().size());
+      assertEquals(1000, result.getExpandedEfoTerms().size());
     }
   }
 
