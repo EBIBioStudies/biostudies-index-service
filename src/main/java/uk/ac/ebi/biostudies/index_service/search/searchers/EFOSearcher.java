@@ -5,6 +5,7 @@ import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.lucene.document.Document;
 import org.springframework.stereotype.Component;
+import uk.ac.ebi.biostudies.index_service.Constants;
 import uk.ac.ebi.biostudies.index_service.exceptions.SearchException;
 import uk.ac.ebi.biostudies.index_service.index.IndexName;
 import uk.ac.ebi.biostudies.index_service.search.engine.DocumentMapper;
@@ -35,8 +36,7 @@ public class EFOSearcher implements SearchFacade<EFOSearchHit> {
    * @param mapper the document-to-DTO mapper
    * @throws NullPointerException if any parameter is null
    */
-  public EFOSearcher(
-      LuceneQueryExecutor queryExecutor, DocumentMapper<EFOSearchHit> mapper) {
+  public EFOSearcher(LuceneQueryExecutor queryExecutor, DocumentMapper<EFOSearchHit> mapper) {
     this.queryExecutor = Objects.requireNonNull(queryExecutor, "queryExecutor must not be null");
     this.mapper = Objects.requireNonNull(mapper, "mapper must not be null");
   }
@@ -83,5 +83,21 @@ public class EFOSearcher implements SearchFacade<EFOSearchHit> {
       log.error("Unexpected error during submission search: {}", criteria, e);
       throw new SearchException("Unexpected search error", e);
     }
+  }
+
+  /**
+   * Gets the document frequency for a specific term in the submission index.
+   *
+   * <p>Document frequency is the number of documents that contain the term in the specified field.
+   *
+   * <p><strong>Performance:</strong> This is a fast O(1) operation using Lucene's term dictionary
+   * (inverted index lookup). It does not scan documents.
+   *
+   * @param term the term text to check (will be lowercased for matching)
+   * @return the number of documents containing the term, or 0 if term not found or invalid inputs
+   * @throws IOException if there's an error accessing the index
+   */
+  public int getTermFrequency(String term) throws IOException {
+    return queryExecutor.getTermFrequency(Constants.CONTENT, term, IndexName.SUBMISSION);
   }
 }

@@ -6,7 +6,9 @@ import java.util.List;
 import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.StoredFields;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
@@ -233,6 +235,54 @@ public class LuceneQueryExecutor {
 
     } finally {
       indexManager.releaseSearcher(indexName, searcher);
+    }
+  }
+
+  /**
+   * Gets the document frequency for a specific term in a field.
+   *
+   * <p>Document frequency is the number of documents that contain the term in the specified field.
+   * This is useful for filtering autocomplete suggestions, spell checking, and relevance scoring.
+   *
+   * <p><strong>Performance:</strong> This is a fast O(1) operation using Lucene's term dictionary
+   * (inverted index lookup). It does not scan documents.
+   *
+   * <p><strong>Thread Safety:</strong> Uses acquireSearcher/releaseSearcher pattern for safe
+   * concurrent access to the index.
+   *
+   * @param field the field name to search in (e.g., "content", "title")
+   * @param term the term text to check (will be lowercased for matching)
+   * @param indexName the index to query (SUBMISSION, EFO, etc.)
+   * @return the number of documents containing the term, or 0 if term not found or invalid inputs
+   * @throws IOException if there's an error accessing the index
+   */
+  public int getTermFrequency(String field, String term, IndexName indexName) throws IOException {
+    if (field == null || field.isEmpty()) {
+      log.warn("Empty field name provided for term frequency calculation");
+      return 0;
+    }
+    if (term == null || term.isEmpty()) {
+      log.warn("Empty term provided for term frequency calculation");
+      return 0;
+    }
+
+    IndexSearcher searcher = null;
+    try {
+      searcher = indexManager.acquireSearcher(indexName);
+      IndexReader reader = searcher.getIndexReader();
+
+      // Check if term exists in the index with at least 1 document
+      Term luceneTerm = new Term(field, term.toLowerCase());
+      int frequency = reader.docFreq(luceneTerm);
+
+      log.trace("Term '{}' in field '{}' appears in {} documents", term, field, frequency);
+
+      return frequency;
+
+    } finally {
+      if (searcher != null) {
+        indexManager.releaseSearcher(indexName, searcher);
+      }
     }
   }
 }
