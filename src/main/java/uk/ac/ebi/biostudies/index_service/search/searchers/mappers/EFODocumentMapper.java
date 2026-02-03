@@ -23,6 +23,7 @@ public class EFODocumentMapper implements DocumentMapper<EFOSearchHit> {
     if (document == null) {
       throw new IllegalStateException("Document cannot be null");
     }
+    String id = document.get(EFOField.ID.getFieldName());
     String efoID = document.get(EFOField.EFO_ID.getFieldName());
     String term = document.get(EFOField.TERM.getFieldName());
     String child = document.get(EFOField.CHILDREN.getFieldName());
@@ -30,6 +31,6 @@ public class EFODocumentMapper implements DocumentMapper<EFOSearchHit> {
     List<String> synonyms = List.of(document.getValues(EFOField.QE_TERM.getFieldName()));
     List<String> efoTerms = List.of(document.getValues(EFOField.QE_EFO.getFieldName()));
 
-    return new EFOSearchHit(efoID, term, child, altTerm, synonyms, efoTerms);
+    return new EFOSearchHit(id, efoID, term, child, altTerm, synonyms, efoTerms);
   }
 }

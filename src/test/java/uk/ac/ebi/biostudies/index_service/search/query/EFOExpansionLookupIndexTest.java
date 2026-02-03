@@ -59,6 +59,7 @@ class EFOExpansionLookupIndexTest {
 
       EFOSearchHit hit =
           new EFOSearchHit(
+              "ID",
               "EFO:0000311",
               "cancer",
               null,
@@ -110,6 +111,7 @@ class EFOExpansionLookupIndexTest {
 
       EFOSearchHit hit =
           new EFOSearchHit(
+              "ID",
               "EFO:0000408",
               "disease",
               null,
@@ -138,7 +140,13 @@ class EFOExpansionLookupIndexTest {
 
       EFOSearchHit hit =
           new EFOSearchHit(
-              "EFO:0000815", "heart", null, null, Collections.emptyList(), List.of("EFO:0000815"));
+              "ID",
+              "EFO:0000815",
+              "heart",
+              null,
+              null,
+              Collections.emptyList(),
+              List.of("EFO:0000815"));
 
       when(efoSearcher.searchAll(any(TermQuery.class), eq(16))).thenReturn(List.of(hit));
 
@@ -172,7 +180,8 @@ class EFOExpansionLookupIndexTest {
       efoTermsWithNulls.add(null);
 
       EFOSearchHit hit =
-          new EFOSearchHit("EFO:0000001", "test", null, null, synonymsWithNulls, efoTermsWithNulls);
+          new EFOSearchHit(
+              "ID", "EFO:0000001", "test", null, null, synonymsWithNulls, efoTermsWithNulls);
 
       when(efoSearcher.searchAll(any(TermQuery.class), eq(16))).thenReturn(List.of(hit));
 
@@ -203,6 +212,7 @@ class EFOExpansionLookupIndexTest {
 
         EFOSearchHit hit =
             new EFOSearchHit(
+                "ID",
                 "EFO:0000305",
                 "breast cancer",
                 null,
@@ -254,6 +264,7 @@ class EFOExpansionLookupIndexTest {
 
         EFOSearchHit hit =
             new EFOSearchHit(
+                "ID",
                 "EFO:0000400",
                 "diabetes",
                 null,
@@ -282,6 +293,7 @@ class EFOExpansionLookupIndexTest {
 
         EFOSearchHit hit =
             new EFOSearchHit(
+                "ID",
                 "EFO:0000618",
                 "neuron",
                 null,
@@ -313,7 +325,13 @@ class EFOExpansionLookupIndexTest {
 
         EFOSearchHit hit =
             new EFOSearchHit(
-                "EFO:0000311", "cancer", null, null, List.of("neoplasm"), List.of("EFO:0000311"));
+                "ID",
+                "EFO:0000311",
+                "cancer",
+                null,
+                null,
+                List.of("neoplasm"),
+                List.of("EFO:0000311"));
 
         when(efoSearcher.searchAll(any(FuzzyQuery.class), eq(16))).thenReturn(List.of(hit));
 
@@ -339,6 +357,7 @@ class EFOExpansionLookupIndexTest {
 
         EFOSearchHit hit =
             new EFOSearchHit(
+                "ID",
                 "EFO:0000001",
                 "abnormality",
                 null,
@@ -370,6 +389,7 @@ class EFOExpansionLookupIndexTest {
 
         EFOSearchHit hit1 =
             new EFOSearchHit(
+                "ID",
                 "EFO:0000302",
                 "brain",
                 "cerebrum",
@@ -379,6 +399,7 @@ class EFOExpansionLookupIndexTest {
 
         EFOSearchHit hit2 =
             new EFOSearchHit(
+                "ID",
                 "EFO:0000908",
                 "brain",
                 "encephalon",
@@ -407,9 +428,10 @@ class EFOExpansionLookupIndexTest {
         // Arrange
         Query query = new TermQuery(new Term("content", "test"));
 
-        EFOSearchHit hit1 = new EFOSearchHit("EFO:0000001", "test", null, null, null, null);
+        EFOSearchHit hit1 = new EFOSearchHit("ID", "EFO:0000001", "test", null, null, null, null);
         EFOSearchHit hit2 =
             new EFOSearchHit(
+                "ID",
                 "EFO:0000002",
                 "test",
                 null,
@@ -418,7 +440,7 @@ class EFOExpansionLookupIndexTest {
                 Collections.emptyList());
         EFOSearchHit hit3 =
             new EFOSearchHit(
-                "EFO:0000003", "test", null, null, List.of("valid"), List.of("EFO:0000003"));
+                "ID", "EFO:0000003", "test", null, null, List.of("valid"), List.of("EFO:0000003"));
 
         when(efoSearcher.searchAll(any(TermQuery.class), eq(16)))
             .thenReturn(List.of(hit1, hit2, hit3));
@@ -585,7 +607,6 @@ class EFOExpansionLookupIndexTest {
         assertTrue(result.synonyms.isEmpty());
         assertTrue(result.efo.isEmpty());
       }
-
     }
   }
 }

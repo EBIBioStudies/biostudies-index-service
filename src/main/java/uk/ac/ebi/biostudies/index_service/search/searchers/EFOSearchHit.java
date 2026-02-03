@@ -10,6 +10,7 @@ import java.util.List;
  *
  * <p>All instances are immutable.
  *
+ * @param id doc ID
  * @param efoID the EFO identifier (e.g., "EFO:0000311")
  * @param term the primary term label (e.g., "cancer")
  * @param child child term in the ontology hierarchy, if applicable
@@ -18,6 +19,7 @@ import java.util.List;
  * @param efoTerms list of related EFO term identifiers for query expansion (may be null or empty)
  */
 public record EFOSearchHit(
+    String id,
     String efoID,
     String term,
     String child,
