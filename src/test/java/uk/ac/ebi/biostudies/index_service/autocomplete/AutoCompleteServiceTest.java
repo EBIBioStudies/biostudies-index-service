@@ -20,7 +20,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import uk.ac.ebi.biostudies.index_service.index.efo.EFOField;
-import uk.ac.ebi.biostudies.index_service.index.management.IndexManager;
 import uk.ac.ebi.biostudies.index_service.search.searchers.EFOSearchHit;
 import uk.ac.ebi.biostudies.index_service.search.searchers.EFOSearcher;
 
@@ -29,13 +28,12 @@ import uk.ac.ebi.biostudies.index_service.search.searchers.EFOSearcher;
 class AutoCompleteServiceTest {
 
   @Mock private EFOSearcher efoSearcher;
-  @Mock private IndexManager indexManager;
 
   private AutoCompleteService service;
 
   @BeforeEach
   void setUp() {
-    service = new AutoCompleteService(efoSearcher, indexManager);
+    service = new AutoCompleteService(efoSearcher);
   }
 
   /**

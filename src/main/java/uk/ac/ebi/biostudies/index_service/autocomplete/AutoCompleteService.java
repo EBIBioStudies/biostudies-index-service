@@ -15,7 +15,6 @@ import org.apache.lucene.search.TermQuery;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import uk.ac.ebi.biostudies.index_service.index.efo.EFOField;
-import uk.ac.ebi.biostudies.index_service.index.management.IndexManager;
 import uk.ac.ebi.biostudies.index_service.search.searchers.EFOSearchHit;
 import uk.ac.ebi.biostudies.index_service.search.searchers.EFOSearcher;
 
@@ -42,14 +41,12 @@ public class AutoCompleteService {
   private static final int FETCH_MULTIPLIER = 3;
 
   private final EFOSearcher efoSearcher;
-  private final IndexManager indexManager;
 
   @Value("${autocomplete.filter-by-index:true}")
   private boolean filterByIndex;
 
-  public AutoCompleteService(EFOSearcher efoSearcher, IndexManager indexManager) {
+  public AutoCompleteService(EFOSearcher efoSearcher) {
     this.efoSearcher = efoSearcher;
-    this.indexManager = indexManager;
   }
 
   /**
