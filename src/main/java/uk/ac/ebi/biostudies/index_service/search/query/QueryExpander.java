@@ -1,31 +1,29 @@
 package uk.ac.ebi.biostudies.index_service.search.query;
 
+import java.io.IOException;
+import java.util.List;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.*;
 import org.springframework.stereotype.Component;
-
-import java.io.IOException;
-import java.util.List;
 import uk.ac.ebi.biostudies.index_service.analysis.AnalyzerManager;
 
 /**
- * Expands queries with ontology terms (EFO) and synonyms.
- * Recursively processes Boolean queries and expands expandable fields.
+ * Expands queries with ontology terms (EFO) and synonyms. Recursively processes Boolean queries and
+ * expands expandable fields.
  */
 @Slf4j
 @Component
 public class QueryExpander {
 
-  private static final int MAX_EXPANSION_TERMS = 100;
+  private static final int MAX_EXPANSION_TERMS = 1000;
 
   private final EFOExpansionLookupIndex efoExpansionLookupIndex;
   private final AnalyzerManager analyzerManager;
 
   public QueryExpander(
-      EFOExpansionLookupIndex efoExpansionLookupIndex,
-      AnalyzerManager analyzerManager) {
+      EFOExpansionLookupIndex efoExpansionLookupIndex, AnalyzerManager analyzerManager) {
     this.efoExpansionLookupIndex = efoExpansionLookupIndex;
     this.analyzerManager = analyzerManager;
   }
@@ -43,21 +41,18 @@ public class QueryExpander {
       Set<String> expandableFields = analyzerManager.getExpandableFieldNames();
 
       // Perform expansion
-      QueryExpansionPair result = expandInternal(expandableFields, baseQuery);
+      QueryExpansionResult result = expandInternal(expandableFields, baseQuery);
 
       if (result.expansionTerms == null) {
         return QueryResult.withoutExpansion(baseQuery);
       }
 
-      // Build metadata
-      Set<String> efoTerms = result.expansionTerms.efo;
-      Set<String> synonyms = result.expansionTerms.synonyms;
-      boolean tooMany = (efoTerms.size() + synonyms.size()) > MAX_EXPANSION_TERMS;
-
+      // Build metadata from result (no recalculation needed)
       return QueryResult.builder()
-          .query(result.query)
-          .expandedEfoTerms(efoTerms)
-          .expandedSynonyms(synonyms)
+          .query(result.expandedQuery)
+          .expandedEfoTerms(result.expansionTerms.efo)
+          .expandedSynonyms(result.expansionTerms.synonyms)
+          .tooManyExpansionTerms(result.tooManyExpansionTerms)
           .build();
 
     } catch (Exception ex) {
@@ -66,16 +61,13 @@ public class QueryExpander {
     }
   }
 
-  /**
-   * Internal recursive expansion logic.
-   */
-  private QueryExpansionPair expandInternal(
-      Set<String> expandableFields,
-      Query query) throws IOException {
+  /** Internal recursive expansion logic. */
+  private QueryExpansionResult expandInternal(Set<String> expandableFields, Query query)
+      throws IOException {
 
     // Don't expand MatchAllDocsQuery
     if (query.equals(new MatchAllDocsQuery())) {
-      return new QueryExpansionPair(query, null);
+      return new QueryExpansionResult(query, null, false);
     }
 
     // Recursively expand BooleanQuery
@@ -85,26 +77,29 @@ public class QueryExpander {
 
     // Don't expand prefix or wildcard queries (side-effects)
     if (query instanceof PrefixQuery || query instanceof WildcardQuery) {
-      return new QueryExpansionPair(query, null);
+      return new QueryExpansionResult(query, null, false);
     }
 
     // Expand single term/phrase queries
     return doExpand(expandableFields, query);
   }
 
-  /**
-   * Expands a BooleanQuery by recursively expanding each clause.
-   */
-  private QueryExpansionPair expandBooleanQuery(
-      Set<String> expandableFields,
-      BooleanQuery boolQuery) throws IOException {
+  /** Expands a BooleanQuery by recursively expanding each clause. */
+  private QueryExpansionResult expandBooleanQuery(
+      Set<String> expandableFields, BooleanQuery boolQuery) throws IOException {
 
     BooleanQuery.Builder builder = new BooleanQuery.Builder();
     EFOExpansionTerms combinedTerms = new EFOExpansionTerms();
+    boolean anyTooMany = false;
 
     for (BooleanClause clause : boolQuery.clauses()) {
-      QueryExpansionPair expanded = expandInternal(expandableFields, clause.query());
-      builder.add(expanded.query, clause.occur());
+      QueryExpansionResult expanded = expandInternal(expandableFields, clause.query());
+      builder.add(expanded.expandedQuery, clause.occur());
+
+      // Track if any clause had too many terms
+      if (expanded.tooManyExpansionTerms) {
+        anyTooMany = true;
+      }
 
       // Merge expansion terms
       if (expanded.expansionTerms != null) {
@@ -118,30 +113,28 @@ public class QueryExpander {
       }
     }
 
-    return new QueryExpansionPair(builder.build(), combinedTerms);
+    return new QueryExpansionResult(builder.build(), combinedTerms, anyTooMany);
   }
 
-  /**
-   * Performs the actual expansion for a single query term.
-   */
-  private QueryExpansionPair doExpand(
-      Set<String> expandableFields,
-      Query query) throws IOException {
+  /** Performs the actual expansion for a single query term. */
+  private QueryExpansionResult doExpand(Set<String> expandableFields, Query query) {
 
     String field = getQueryField(query);
 
     // Skip if field is not expandable
     if (field == null || !expandableFields.contains(field)) {
-      return new QueryExpansionPair(query, null);
+      return new QueryExpansionResult(query, null, false);
     }
 
     // Get EFO expansion terms from lookup index
     EFOExpansionTerms expansionTerms = efoExpansionLookupIndex.getExpansionTerms(query);
 
-    // Check if too many terms
-    if (expansionTerms.efo.size() + expansionTerms.synonyms.size() > MAX_EXPANSION_TERMS) {
-      log.warn("Too many expansion terms for {}", query);
-      return new QueryExpansionPair(query, expansionTerms);
+    int totalTerms = expansionTerms.efo.size() + expansionTerms.synonyms.size();
+
+    // Check if too many terms - skip expansion but record the fact
+    if (totalTerms > MAX_EXPANSION_TERMS) {
+      log.warn("Too many expansion terms ({}) for query: {}", totalTerms, query);
+      return new QueryExpansionResult(query, expansionTerms, true);
     }
 
     // Build expanded query if we have expansion terms
@@ -163,15 +156,13 @@ public class QueryExpander {
         boolQueryBuilder.add(expansionPart, BooleanClause.Occur.SHOULD);
       }
 
-      return new QueryExpansionPair(boolQueryBuilder.build(), expansionTerms);
+      return new QueryExpansionResult(boolQueryBuilder.build(), expansionTerms, false);
     }
 
-    return new QueryExpansionPair(query, null);
+    return new QueryExpansionResult(query, null, false);
   }
 
-  /**
-   * Extracts the field name from various query types.
-   */
+  /** Extracts the field name from various query types. */
   private String getQueryField(Query query) {
     try {
       if (query instanceof PrefixQuery) {
@@ -192,20 +183,19 @@ public class QueryExpander {
         }
         return terms[0].field();
       } else {
-        log.error("Unsupported class [{}] for query [{}]",
-            query.getClass().getName(), query);
+        log.error("Unsupported class [{}] for query [{}]", query.getClass().getName(), query);
         return null;
       }
     } catch (UnsupportedOperationException ex) {
-      log.error("Query of [{}], class [{}] doesn't allow us to get its terms extracted",
-          query, query.getClass().getCanonicalName());
+      log.error(
+          "Query of [{}], class [{}] doesn't allow us to get its terms extracted",
+          query,
+          query.getClass().getCanonicalName());
       return null;
     }
   }
 
-  /**
-   * Creates a query from a text string (TermQuery or PhraseQuery).
-   */
+  /** Creates a query from a text string (TermQuery or PhraseQuery). */
   private Query newQueryFromString(String text, String field) {
     if (text.contains(" ")) {
       String[] tokens = text.split("\\s+");
@@ -219,9 +209,7 @@ public class QueryExpander {
     }
   }
 
-  /**
-   * Checks if a query part is redundant (already covered by prefix/wildcard).
-   */
+  /** Checks if a query part is redundant (already covered by prefix/wildcard). */
   private boolean queryPartIsRedundant(Query query, Query part) {
     Term partTerm = getFirstTerm(part);
 
@@ -231,19 +219,15 @@ public class QueryExpander {
           && partTerm.text().startsWith(prefixTerm.text());
     } else if (query instanceof WildcardQuery) {
       Term wildcardTerm = ((WildcardQuery) query).getTerm();
-      String wildcard = "^" + wildcardTerm.text()
-          .replaceAll("\\?", "\\.")
-          .replaceAll("\\*", "\\.*") + "$";
-      return wildcardTerm.field().equals(partTerm.field())
-          && partTerm.text().matches(wildcard);
+      String wildcard =
+          "^" + wildcardTerm.text().replaceAll("\\?", "\\.").replaceAll("\\*", "\\.*") + "$";
+      return wildcardTerm.field().equals(partTerm.field()) && partTerm.text().matches(wildcard);
     } else {
       return query.toString().equals(part.toString());
     }
   }
 
-  /**
-   * Extracts the first term from a query.
-   */
+  /** Extracts the first term from a query. */
   private Term getFirstTerm(Query query) {
     if (query instanceof BooleanQuery) {
       List<BooleanClause> clauses = ((BooleanQuery) query).clauses();
@@ -269,22 +253,18 @@ public class QueryExpander {
       }
       return terms[0];
     } else {
-      log.error("Unsupported class [{}] for query [{}]",
-          query.getClass().getName(), query);
+      log.error("Unsupported class [{}] for query [{}]", query.getClass().getName(), query);
       return new Term("", "");
     }
   }
 
   /**
-   * Internal helper class for expansion results.
+   * Result of query expansion including the expanded query and metadata.
+   *
+   * @param expandedQuery the query after EFO expansion (may be same as original if no expansion)
+   * @param expansionTerms the EFO and synonym terms found, null if none
+   * @param tooManyExpansionTerms true if expansion was skipped due to exceeding MAX_EXPANSION_TERMS
    */
-  private static class QueryExpansionPair {
-    final Query query;
-    final EFOExpansionTerms expansionTerms;
-
-    QueryExpansionPair(Query query, EFOExpansionTerms expansionTerms) {
-      this.query = query;
-      this.expansionTerms = expansionTerms;
-    }
-  }
+  private record QueryExpansionResult(
+      Query expandedQuery, EFOExpansionTerms expansionTerms, boolean tooManyExpansionTerms) {}
 }

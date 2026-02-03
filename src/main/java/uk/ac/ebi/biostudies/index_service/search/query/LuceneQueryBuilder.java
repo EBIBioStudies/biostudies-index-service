@@ -120,6 +120,7 @@ public class LuceneQueryBuilder {
           .query(expandedQuery)
           .expandedEfoTerms(expansionResult.getExpandedEfoTerms())
           .expandedSynonyms(expansionResult.getExpandedSynonyms())
+          .tooManyExpansionTerms(expansionResult.getTooManyExpansionTerms())
           .build();
 
     } catch (Exception ex) {

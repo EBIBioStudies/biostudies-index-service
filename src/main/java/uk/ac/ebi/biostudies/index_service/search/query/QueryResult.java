@@ -24,6 +24,10 @@ public class QueryResult {
   @Builder.Default
   private final Set<String> expandedSynonyms = Collections.emptySet();
 
+  /** Flag indicating if too many expansion terms were encountered. */
+  @Builder.Default
+  private final Boolean tooManyExpansionTerms = false;
+
   /**
    * Creates a query result without expansion.
    *

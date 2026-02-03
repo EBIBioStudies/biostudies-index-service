@@ -20,6 +20,7 @@ import uk.ac.ebi.biostudies.index_service.search.searchers.SubmissionSearchHit;
  * @param query the processed query string
  * @param facets map of facet names to their selected values
  * @param hits list of search result documents
+ * @param tooManyExpansionTerms flag indicating if too many expansion terms were encountered
  */
 public record SearchResponseDTO(
     int page,
@@ -33,4 +34,5 @@ public record SearchResponseDTO(
     Set<String> expandedSynonyms,
     String query,
     Map<String, List<String>> facets,
-    List<SubmissionSearchHit> hits) {}
+    List<SubmissionSearchHit> hits,
+    boolean tooManyExpansionTerms) {}

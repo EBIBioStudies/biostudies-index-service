@@ -18,8 +18,8 @@ import uk.ac.ebi.biostudies.index_service.Constants;
 import uk.ac.ebi.biostudies.index_service.index.IndexName;
 import uk.ac.ebi.biostudies.index_service.index.management.IndexManager;
 import uk.ac.ebi.biostudies.index_service.search.engine.PaginatedResult;
-import uk.ac.ebi.biostudies.index_service.search.searchers.SubmissionSearchHit;
 import uk.ac.ebi.biostudies.index_service.search.query.QueryResult;
+import uk.ac.ebi.biostudies.index_service.search.searchers.SubmissionSearchHit;
 
 /**
  * Processes and enhances search results before building the final response.
@@ -335,7 +335,8 @@ public class SearchResponseProcessor {
         filteredSynonyms, // Filtered to only existing terms
         displayQuery, // null when highlighting disabled
         displayFacets, // null when empty
-        hits);
+        hits,
+        queryResult.getTooManyExpansionTerms());
   }
 
   /**
@@ -367,6 +368,7 @@ public class SearchResponseProcessor {
         Set.of(), // no expanded synonyms
         displayQuery,
         null, // no facets
-        Collections.emptyList()); // no hits
+        Collections.emptyList(),
+        false); // no hits
   }
 }
