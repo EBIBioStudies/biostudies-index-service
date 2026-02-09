@@ -33,4 +33,5 @@ public class EFODocumentMapper implements DocumentMapper<EFOSearchHit> {
 
     return new EFOSearchHit(id, efoID, term, child, altTerm, synonyms, efoTerms);
   }
+
 }

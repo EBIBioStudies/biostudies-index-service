@@ -1,6 +1,7 @@
 package uk.ac.ebi.biostudies.index_service.index.efo;
 
 import java.io.IOException;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.store.Directory;
@@ -8,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
+@Getter
 public class EFOManager {
   private final EFOLoader loader;
   private final EFOIndexer indexer;

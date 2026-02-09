@@ -5,6 +5,7 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import uk.ac.ebi.biostudies.index_service.analysis.AnalyzerManager;
+import uk.ac.ebi.biostudies.index_service.autocomplete.EFOTermMatcher;
 import uk.ac.ebi.biostudies.index_service.index.management.IndexInitializerFactory;
 import uk.ac.ebi.biostudies.index_service.messages.WebSocketConnectionService;
 import uk.ac.ebi.biostudies.index_service.parsing.ParserManager;
@@ -37,19 +38,23 @@ public class InitializationService {
   private final IndexInitializerFactory initializerFactory;
   private final TaxonomyManager taxonomyManager;
   private final WebSocketConnectionService webSocketConnectionService;
+  private final EFOTermMatcher efoTermMatcher;
 
   public InitializationService(
       CollectionRegistryService collectionRegistryService,
       AnalyzerManager analyzerManager,
       ParserManager parserManager,
-      IndexInitializerFactory initializerFactory, TaxonomyManager taxonomyManager,
-      WebSocketConnectionService webSocketConnectionService) {
+      IndexInitializerFactory initializerFactory,
+      TaxonomyManager taxonomyManager,
+      WebSocketConnectionService webSocketConnectionService,
+      EFOTermMatcher efoTermMatcher) {
     this.collectionRegistryService = collectionRegistryService;
     this.analyzerManager = analyzerManager;
     this.parserManager = parserManager;
     this.initializerFactory = initializerFactory;
     this.taxonomyManager = taxonomyManager;
     this.webSocketConnectionService = webSocketConnectionService;
+    this.efoTermMatcher = efoTermMatcher;
   }
 
   /**
@@ -90,6 +95,9 @@ public class InitializationService {
       log.info("Initializing Lucene indexes...");
       initializerFactory.initializeAllIndexes();
       log.info("All indexes initialized successfully");
+
+      // Initialize EFO caches. It uses the EFO index so order matters.
+      efoTermMatcher.initialize();
 
       // Init configuration for facets
       taxonomyManager.init(collectionRegistry);

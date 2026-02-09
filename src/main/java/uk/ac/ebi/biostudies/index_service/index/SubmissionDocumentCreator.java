@@ -1,11 +1,13 @@
 package uk.ac.ebi.biostudies.index_service.index;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.lucene.document.Document;
@@ -22,6 +24,7 @@ import org.apache.lucene.util.BytesRef;
 import org.springframework.stereotype.Component;
 import uk.ac.ebi.biostudies.index_service.Constants;
 import uk.ac.ebi.biostudies.index_service.TaxonomyManager;
+import uk.ac.ebi.biostudies.index_service.autocomplete.EFOTermMatcher;
 import uk.ac.ebi.biostudies.index_service.registry.model.FieldName;
 import uk.ac.ebi.biostudies.index_service.registry.model.LuceneFieldTypes;
 import uk.ac.ebi.biostudies.index_service.registry.model.PropertyDescriptor;
@@ -36,6 +39,7 @@ import uk.ac.ebi.biostudies.index_service.registry.service.CollectionRegistrySer
  *   <li>Extracts collection name from value map to lookup field descriptors
  *   <li>Adds special fields (file attributes, parsing errors)
  *   <li>Processes each collection field according to its {@link PropertyDescriptor}
+ *   <li>Adds EFO hierarchical facets for taxonomy navigation
  *   <li>Builds faceted document using taxonomy configuration
  * </ul>
  *
@@ -54,17 +58,22 @@ public class SubmissionDocumentCreator {
 
   private final TaxonomyManager taxonomyManager;
   private final CollectionRegistryService collectionRegistryService;
+  private final EFOTermMatcher efoTermMatcher;
 
   /**
    * Constructs a document creator with required indexing dependencies.
    *
    * @param taxonomyManager provides facet configuration and taxonomy writer
    * @param collectionRegistryService provides collection field descriptors
+   * @param efoTermMatcher extracts EFO terms and hierarchies from content
    */
   public SubmissionDocumentCreator(
-      TaxonomyManager taxonomyManager, CollectionRegistryService collectionRegistryService) {
+      TaxonomyManager taxonomyManager,
+      CollectionRegistryService collectionRegistryService,
+      EFOTermMatcher efoTermMatcher) {
     this.taxonomyManager = Objects.requireNonNull(taxonomyManager);
     this.collectionRegistryService = Objects.requireNonNull(collectionRegistryService);
+    this.efoTermMatcher = Objects.requireNonNull(efoTermMatcher);
   }
 
   /**
@@ -76,6 +85,7 @@ public class SubmissionDocumentCreator {
    *   <li>Validates collection field presence
    *   <li>Adds file attributes and parsing error flags
    *   <li>Processes all collection-specific fields via {@link #addFieldToDocument}
+   *   <li>Adds EFO hierarchical facets from content
    *   <li>Builds final faceted document via {@link org.apache.lucene.facet.FacetsConfig}
    * </ol>
    *
@@ -112,7 +122,10 @@ public class SubmissionDocumentCreator {
       addFieldToDocument(doc, valueMap, propertyDescriptor);
     }
 
-    // Build final faceted document
+    // Add EFO hierarchical facets for taxonomy navigation
+    addEFOHierarchicalFacets(doc, valueMap);
+
+    // Build final faceted document - no taxonomy writer needed
     return taxonomyManager.getFacetsConfig().build(doc);
   }
 
@@ -250,9 +263,106 @@ public class SubmissionDocumentCreator {
       }
 
       String finalValue = mustLowerCase ? subVal.trim().toLowerCase() : subVal.trim();
-      // doc.add(new FacetField(fieldName, finalValue));
       doc.add(new SortedSetDocValuesFacetField(fieldName, finalValue));
       log.debug("Adding facet field '{}': {}", fieldName, subVal);
     }
+  }
+
+  /**
+   * Adds EFO hierarchical facets to the document for taxonomy-based navigation.
+   *
+   * <p>For each EFO term found in the submission content, this method adds hierarchical facet
+   * values representing the full path from root to each level of the hierarchy.
+   *
+   * <p>Format: "ancestor1/ancestor2/.../term" (full path encoding)
+   *
+   * <p>Example: If "odontoclast" is found with ancestry "experimental factor → sample factor → cell
+   * type → ... → osteoclast → odontoclast":
+   *
+   * <ul>
+   *   <li>experimental factor
+   *   <li>experimental factor/sample factor
+   *   <li>experimental factor/sample factor/cell type
+   *   <li>experimental factor/sample factor/cell type/hematopoietic cell
+   *   <li>...
+   *   <li>experimental factor/sample factor/cell type/.../osteoclast
+   *   <li>experimental factor/sample factor/cell type/.../osteoclast/odontoclast
+   * </ul>
+   *
+   * <p>This full-path encoding prevents conflicts when multiple ontology branches are indexed in
+   * the same document, and enables proper hierarchical drill-down queries and count aggregation for
+   * tree navigation.
+   *
+   * @param doc the document to enrich with EFO facets
+   * @param valueMap submission values containing content field
+   */
+  private void addEFOHierarchicalFacets(Document doc, Map<String, Object> valueMap) {
+    Object content = valueMap.get(Constants.CONTENT);
+
+    if (!(content instanceof String contentStr) || contentStr.isEmpty()) {
+      return;
+    }
+
+    // Find all EFO terms in content
+    List<String> foundTerms = efoTermMatcher.findEFOTerms(contentStr);
+
+    if (foundTerms.isEmpty()) {
+      return;
+    }
+
+    Set<String> addedFacets = new HashSet<>(); // Avoid duplicates
+    int skippedCount = 0;
+
+    for (String term : foundTerms) {
+      // Validate term is not empty
+      if (term == null || term.trim().isEmpty()) {
+        skippedCount++;
+        continue;
+      }
+
+      // Get ancestry path: [root, ..., parent, term]
+      List<String> ancestors = new ArrayList<>(efoTermMatcher.getAncestors(term));
+      ancestors.add(term); // Add the term itself at the end
+
+      // Filter out null, empty, or blank entries from the path
+      List<String> validPath =
+          ancestors.stream()
+              .filter(a -> a != null && !a.trim().isEmpty())
+              .collect(Collectors.toList());
+
+      // Skip if path is empty after filtering
+      if (validPath.isEmpty()) {
+        log.warn("Skipping EFO term '{}' - resulted in empty path after filtering", term);
+        skippedCount++;
+        continue;
+      }
+
+      // Add facets with full path encoding from root to each level
+      // This prevents depth conflicts when multiple branches exist in same document
+      for (int depth = 0; depth < validPath.size(); depth++) {
+        // Build full path from root to current level
+        // Example: "experimental factor/sample factor/cell type"
+        String pathToHere = String.join("/", validPath.subList(0, depth + 1));
+
+        if (addedFacets.add(pathToHere)) { // Only add once
+          try {
+            doc.add(new SortedSetDocValuesFacetField("efo", pathToHere));
+          } catch (IllegalArgumentException e) {
+            log.warn(
+                "Failed to add EFO facet at depth {} for path '{}': {}",
+                depth,
+                pathToHere,
+                e.getMessage());
+            skippedCount++;
+          }
+        }
+      }
+    }
+
+    if (skippedCount > 0) {
+      log.debug("Skipped {} invalid EFO terms/paths during facet creation", skippedCount);
+    }
+
+    log.debug("Added {} unique EFO facet values to document", addedFacets.size());
   }
 }

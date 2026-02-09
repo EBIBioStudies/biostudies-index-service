@@ -61,7 +61,7 @@ public class EFOSearcher implements SearchFacade<EFOSearchHit> {
       PaginatedResult<EFOSearchHit> results = documents.map(mapper::toDto);
 
       log.debug(
-          "Submission search completed: {} results, {} total hits",
+          "EFO search completed: {} results, {} total hits",
           results.results().size(),
           results.totalHits());
 

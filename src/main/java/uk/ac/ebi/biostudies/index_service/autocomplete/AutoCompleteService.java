@@ -17,11 +17,19 @@ import org.springframework.stereotype.Service;
 import uk.ac.ebi.biostudies.index_service.index.efo.EFOField;
 import uk.ac.ebi.biostudies.index_service.search.searchers.EFOSearchHit;
 import uk.ac.ebi.biostudies.index_service.search.searchers.EFOSearcher;
+import uk.ac.ebi.biostudies.index_service.search.taxonomy.TaxonomyNode;
+import uk.ac.ebi.biostudies.index_service.search.taxonomy.TaxonomySearcher;
 
 /**
  * Service providing autocomplete functionality by searching EFO (Experimental Factor Ontology)
  * terms and alternative terms, with optional filtering to ensure results exist in the submission
  * index.
+ *
+ * <p>This service supports two autocomplete modes:
+ * <ul>
+ *   <li><b>Standard mode</b> - Searches EFO ontology structure without counts
+ *   <li><b>Count mode</b> - Searches submission facets with real-time submission counts
+ * </ul>
  */
 @Slf4j
 @Service
@@ -41,12 +49,14 @@ public class AutoCompleteService {
   private static final int FETCH_MULTIPLIER = 3;
 
   private final EFOSearcher efoSearcher;
+  private final TaxonomySearcher taxonomySearcher;
 
   @Value("${autocomplete.filter-by-index:true}")
   private boolean filterByIndex;
 
-  public AutoCompleteService(EFOSearcher efoSearcher) {
+  public AutoCompleteService(EFOSearcher efoSearcher, TaxonomySearcher taxonomySearcher) {
     this.efoSearcher = efoSearcher;
+    this.taxonomySearcher = taxonomySearcher;
   }
 
   /**
@@ -67,11 +77,16 @@ public class AutoCompleteService {
    *   <li>{@code term|t|content} - Alternative term from content
    * </ul>
    *
-   * @param query the search term to match against EFO terms
+   * @param query the search term to match against EFO terms (must not be null)
    * @param limit maximum number of results (capped at {@value MAX_LIMIT})
-   * @return formatted autocomplete suggestions, one per line
+   * @return formatted autocomplete suggestions, one per line; empty string if query is null/empty or on error
    */
   public String getKeywords(String query, int limit) {
+    if (query == null || query.trim().isEmpty()) {
+      log.debug("Ignoring empty or null query");
+      return "";
+    }
+
     if (limit > MAX_LIMIT) {
       limit = MAX_LIMIT;
     }
@@ -186,7 +201,7 @@ public class AutoCompleteService {
 
         // Get the actual term value to check
         String termToCheck = getTermForFiltering(hit, sourceField);
-        if (termToCheck == null || termToCheck.isEmpty()) {
+        if (termToCheck == null || termToCheck.trim().isEmpty()) {
           log.trace("Skipping hit with null/empty term: {}", hit);
           filteredCount++;
           continue;
@@ -275,12 +290,12 @@ public class AutoCompleteService {
         resultStr.append(hit.id());
       }
 
-      resultStr.append("\n");
+      resultStr.append("\\n");
     }
 
     // Format alternative terms
     for (EFOSearchHit hit : alternativeTerms) {
-      resultStr.append(hit.term()).append("|t|content\n");
+      resultStr.append(hit.term()).append("|t|content\\n");
     }
 
     return resultStr.toString();
@@ -328,19 +343,93 @@ public class AutoCompleteService {
    *
    * @param efoId the EFO term identifier (URI) whose children to retrieve
    * @return pipe-delimited plain text with child terms in alphabetical order, format: {@code
-   *     term|o|uri}
+   *     term|o|uri}; empty string if efoId is null/empty or on error
    */
   public String getEfoTree(String efoId) {
-    Query query = new TermQuery(new Term(EFOField.PARENT.getFieldName(), efoId.toLowerCase()));
+    if (efoId == null || efoId.trim().isEmpty()) {
+      log.debug("Ignoring empty or null EFO ID");
+      return "";
+    }
 
-    // Sort alphabetically for better UX
-    Sort sort = new Sort(new SortField(EFOField.TERM.getFieldName(), SortField.Type.STRING, false));
+    try {
+      Query query = new TermQuery(new Term(EFOField.PARENT.getFieldName(), efoId.toLowerCase()));
 
-    List<EFOSearchHit> children = efoSearcher.searchAll(query, sort, MAX_TREE_LIMIT);
+      // Sort alphabetically for better UX
+      Sort sort = new Sort(new SortField(EFOField.TERM.getFieldName(), SortField.Type.STRING, false));
 
-    log.debug("Fetched {} child nodes for EFO term: {}", children.size(), efoId);
+      List<EFOSearchHit> children = efoSearcher.searchAll(query, sort, MAX_TREE_LIMIT);
 
-    // No filtering applied - show complete ontology structure for navigation
-    return formatAutocompleteResponse(children, List.of());
+      log.debug("Fetched {} child nodes for EFO term: {}", children.size(), efoId);
+
+      // No filtering applied - show complete ontology structure for navigation
+      return formatAutocompleteResponse(children, List.of());
+    } catch (Exception e) {
+      log.error("Error fetching EFO tree for EFO ID '{}': {}", efoId, e.getMessage(), e);
+      return "";
+    }
+  }
+
+  /**
+   * Searches for EFO terms with hierarchical counts from submission facets.
+   *
+   * <p>This method provides autocomplete suggestions with submission counts, enabling the UI to
+   * display result counts next to each suggestion (e.g., "phagocyte (150)").
+   *
+   * <p>Only returns terms that actually appear in indexed submissions with their exact counts.
+   *
+   * @param query the search term prefix
+   * @param limit maximum number of results (capped at {@value MAX_LIMIT})
+   * @return formatted autocomplete response with counts; empty string if query is null/empty or on error
+   */
+  public String getKeywordsWithCounts(String query, int limit) {
+    if (query == null || query.trim().isEmpty()) {
+      log.debug("Ignoring empty or null query");
+      return "";
+    }
+
+    if (limit > MAX_LIMIT) {
+      limit = MAX_LIMIT;
+    }
+
+    try {
+      List<TaxonomyNode> nodes = taxonomySearcher.searchAllDepths(query, limit);
+      log.debug("EFO search completed: {} results, {} total hits", nodes.size(), nodes.size());
+      return taxonomySearcher.formatAsAutocompleteResponse(nodes);
+
+    } catch (IOException e) {
+      log.error("Error executing taxonomy search for query '{}': {}", query, e.getMessage(), e);
+      return "";
+    }
+  }
+
+  /**
+   * Retrieves children of a given EFO term with counts from submission facets.
+   *
+   * <p>Returns only children that appear in indexed submissions with their submission counts.
+   * Children are determined by the hierarchical facet structure in the submission index.
+   *
+   * @param efoId the parent EFO term URI (e.g., "http://purl.obolibrary.org/obo/CL_0000000")
+   * @param limit maximum number of children (defaults to {@value MAX_TREE_LIMIT} if &lt;= 0)
+   * @return formatted response with child terms and counts; empty string if efoId is null/empty or on error
+   */
+  public String getEfoTreeWithCounts(String efoId, int limit) {
+    if (efoId == null || efoId.trim().isEmpty()) {
+      log.debug("Ignoring empty or null EFO ID");
+      return "";
+    }
+
+    if (limit <= 0) {
+      limit = MAX_TREE_LIMIT;
+    }
+
+    try {
+      List<TaxonomyNode> children = taxonomySearcher.getChildrenByEfoId(efoId, limit);
+      log.debug("Fetched {} child nodes for EFO term: {}", children.size(), efoId);
+      return taxonomySearcher.formatAsAutocompleteResponse(children);
+
+    } catch (IOException e) {
+      log.error("Error fetching EFO tree children for EFO ID '{}': {}", efoId, e.getMessage(), e);
+      return "";
+    }
   }
 }

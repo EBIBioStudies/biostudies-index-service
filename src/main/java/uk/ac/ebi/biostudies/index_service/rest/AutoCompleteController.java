@@ -76,4 +76,46 @@ public class AutoCompleteController {
     if (efoId == null || efoId.isEmpty()) return "";
     return autoCompleteService.getEfoTree(efoId);
   }
+
+  /**
+   * Retrieves autocomplete suggestions with submission counts for EFO terms.
+   *
+   * <p>Similar to {@link #getKeywords} but includes counts in the response format: {@code
+   * term|o|count} where count is the number of submissions containing this term or its descendants.
+   *
+   * @param query the search term to autocomplete
+   * @param limit maximum number of suggestions (defaults to 50, capped at 200)
+   * @return pipe-delimited suggestions with counts
+   */
+  @RequestMapping(
+      value = "/keywords/counts",
+      produces = MediaType.TEXT_PLAIN_VALUE + ";charset=UTF-8",
+      method = RequestMethod.GET)
+  public String getKeywordsWithCounts(
+      @RequestParam(value = "query", defaultValue = "") String query,
+      @RequestParam(value = "limit", required = false, defaultValue = "50") Integer limit) {
+    if (query == null || query.isEmpty()) return "";
+    return autoCompleteService.getKeywordsWithCounts(query, limit);
+  }
+
+  /**
+   * Retrieves children of a given EFO term with submission counts.
+   *
+   * <p>Similar to {@link #getEfoTree} but uses the term label instead of URI and includes counts in
+   * the response.
+   *
+   * @param efoId the parent EFO term label (e.g., "phagocyte")
+   * @param limit maximum number of children (defaults to 500)
+   * @return pipe-delimited child terms with counts
+   */
+  @RequestMapping(
+      value = "/efotree/counts",
+      produces = MediaType.TEXT_PLAIN_VALUE + ";charset=UTF-8",
+      method = RequestMethod.GET)
+  public String getEfoTreeWithCounts(
+      @RequestParam(value = "efoid", defaultValue = "") String efoId,
+      @RequestParam(value = "limit", required = false, defaultValue = "500") Integer limit) {
+    if (efoId == null || efoId.isEmpty()) return "";
+    return autoCompleteService.getEfoTreeWithCounts(efoId, limit);
+  }
 }
