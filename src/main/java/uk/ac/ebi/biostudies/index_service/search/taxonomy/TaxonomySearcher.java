@@ -405,8 +405,8 @@ public class TaxonomySearcher {
    * frontend that no expand button should be shown, matching legacy autocomplete behavior.
    *
    * @param nodes the taxonomy nodes to format
-   * @return formatted response string with escaped newlines (\n), one line per node; empty string
-   *     if nodes is null or empty
+   * @return formatted response string with newlines (\n), one line per node; empty string if nodes
+   *     is null or empty
    */
   public String formatAsAutocompleteResponse(List<TaxonomyNode> nodes) {
     if (nodes == null || nodes.isEmpty()) {
@@ -416,22 +416,18 @@ public class TaxonomySearcher {
     StringBuilder result = new StringBuilder();
 
     for (TaxonomyNode node : nodes) {
-      String line = node.term() + "|o|"
-          + (node.hasChildren() && node.efoId() != null ? node.efoId() : "")
-          + "|"
-          + node.count();
-
-      log.debug("Autocomplete line: [{}]", line);  // ← Add this
+      String line =
+          node.term()
+              + "|o|"
+              + (node.hasChildren() && node.efoId() != null ? node.efoId() : "")
+              + "|"
+              + node.count();
 
       result.append(line).append("\n");
     }
 
-    String response = result.toString();
-    log.debug("Full autocomplete response:\n{}", response);  // ← And this
-
-    return response;
+    return result.toString();
   }
-
 
   /**
    * Gets children of a specific EFO term by EFO ID with submission counts.

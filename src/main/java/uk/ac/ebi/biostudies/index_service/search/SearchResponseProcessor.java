@@ -20,6 +20,7 @@ import uk.ac.ebi.biostudies.index_service.index.management.IndexManager;
 import uk.ac.ebi.biostudies.index_service.search.engine.PaginatedResult;
 import uk.ac.ebi.biostudies.index_service.search.query.QueryResult;
 import uk.ac.ebi.biostudies.index_service.search.searchers.SubmissionSearchHit;
+import uk.ac.ebi.biostudies.index_service.search.suggestion.SpellCheckSuggestionService;
 
 /**
  * Processes and enhances search results before building the final response.
@@ -48,14 +49,16 @@ public class SearchResponseProcessor {
   private final IndexManager indexManager;
   private final SearchSnippetExtractor snippetExtractor;
   private final FacetFormatter facetFormatter;
+  private final SpellCheckSuggestionService suggestionService;
 
   public SearchResponseProcessor(
       IndexManager indexManager,
       SearchSnippetExtractor snippetExtractor,
-      FacetFormatter facetFormatter) {
+      FacetFormatter facetFormatter, SpellCheckSuggestionService suggestionService) {
     this.indexManager = indexManager;
     this.snippetExtractor = snippetExtractor;
     this.facetFormatter = facetFormatter;
+    this.suggestionService = suggestionService;
   }
 
   /**
@@ -206,7 +209,7 @@ public class SearchResponseProcessor {
     }
 
     // Don't suggest if spell checker not available
-    if (!indexManager.hasSpellChecker()) {
+    if (!suggestionService.isAvailable()) {
       log.debug("Spell checker not available, skipping suggestions");
       return Collections.emptyList();
     }
@@ -218,7 +221,7 @@ public class SearchResponseProcessor {
     }
 
     try {
-      String[] suggestions = indexManager.suggestSimilar(queryString, MAX_SUGGESTIONS);
+      String[] suggestions = suggestionService.suggestSimilar(queryString, MAX_SUGGESTIONS);
       if (suggestions.length > 0) {
         log.debug("Generated {} spelling suggestions for '{}'", suggestions.length, queryString);
         return Arrays.asList(suggestions);
