@@ -3,6 +3,7 @@ package uk.ac.ebi.biostudies.index_service.autocomplete;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.lucene.document.Document;
@@ -15,59 +16,42 @@ import org.springframework.stereotype.Component;
 import uk.ac.ebi.biostudies.index_service.index.IndexName;
 import uk.ac.ebi.biostudies.index_service.index.efo.EFOField;
 import uk.ac.ebi.biostudies.index_service.index.management.IndexManager;
-import uk.ac.ebi.biostudies.index_service.search.searchers.EFOSearcher;
 
 /**
  * Provides fast EFO term matching and hierarchy resolution for autocomplete and indexing.
  *
  * <p>Loads all EFO terms and their hierarchical relationships into memory at startup by querying
- * the EFO Lucene index. This avoids re-parsing the efo.owl file on every startup and enables O(1)
- * term lookups.
- *
- * <p><b>Performance:</b>
- *
- * <ul>
- *   <li>Initialization: ~500-1000ms for ~60k EFO documents
- *   <li>Term lookups: O(1)
- *   <li>Memory: ~4-6 MB
- * </ul>
- *
- * <p><b>Thread Safety:</b> All caches use concurrent collections and are safe for concurrent reads
- * after initialization.
+ * the EFO Lucene index, enabling O(1) term lookups. Thread-safe for concurrent reads after
+ * initialization.
  */
 @Slf4j
 @Component
 public class EFOTermMatcher {
 
-  private static final int PAGE_SIZE = 1000;
   private static final int LOG_PROGRESS_INTERVAL = 10000;
 
-  private final EFOSearcher efoSearcher;
   private final IndexManager indexManager;
 
-  // Cache: term (lowercase) -> EFO ID
+  /** Maps lowercase terms to their EFO IDs. */
   private Map<String, String> termToIdCache;
 
-  // Cache: term (lowercase) -> list of ancestor terms (root to immediate parent)
+  /** Maps lowercase terms to their ancestor chains (root to immediate parent). */
   private Map<String, List<String>> termToAncestorsCache;
 
-  // Cache: EFO ID -> term (original case)
+  /** Maps EFO IDs to their primary terms in original case. */
   private Map<String, String> idToTermCache;
 
-  // All unique terms including alternatives (lowercase, for fast matching)
+  /** Contains all unique terms including alternatives in lowercase. */
   private Set<String> allTermsLowercase;
 
-  public EFOTermMatcher(EFOSearcher efoSearcher, IndexManager indexManager) {
-    this.efoSearcher = Objects.requireNonNull(efoSearcher, "efoSearcher must not be null");
+  public EFOTermMatcher(IndexManager indexManager) {
     this.indexManager = Objects.requireNonNull(indexManager, "indexManager must not be null");
   }
 
   /**
    * Initializes EFO term caches by querying the EFO Lucene index.
    *
-   * <p>This method should be called during application initialization after the EFO index is ready.
-   * It reads from the existing EFO index (not the efo.owl file), making it fast even on regular
-   * startups.
+   * <p>Should be called during application initialization after the EFO index is ready.
    *
    * @throws IllegalStateException if initialization fails
    */
@@ -94,26 +78,7 @@ public class EFOTermMatcher {
   }
 
   /**
-   * Loads all EFO terms and parent relationships by directly reading the index. Much faster than
-   * using the search API since it bypasses document mapping.
-   *
-   * @throws IOException if index access fails
-   */
-  /**
-   * Loads all EFO terms and parent relationships by directly reading the index. Much faster than
-   * using the search API since it bypasses document mapping.
-   *
-   * @throws IOException if index access fails
-   */
-  /**
-   * Loads all EFO terms and parent relationships by directly reading the index. Much faster than
-   * using the search API since it bypasses document mapping.
-   *
-   * @throws IOException if index access fails
-   */
-  /**
-   * Loads all EFO terms and parent relationships by directly reading the index. Much faster than
-   * using the search API since it bypasses document mapping.
+   * Loads all EFO terms and parent relationships by directly reading the index.
    *
    * @throws IOException if index access fails
    */
@@ -129,7 +94,6 @@ public class EFOTermMatcher {
 
     log.debug("Loading EFO terms directly from index reader");
 
-    // Get direct access to the index
     IndexSearcher searcher = indexManager.acquireSearcher(IndexName.EFO);
 
     try {
@@ -140,9 +104,7 @@ public class EFOTermMatcher {
 
       log.debug("Found {} documents in EFO index", maxDoc);
 
-      // Iterate through all documents
       for (int docId = 0; docId < maxDoc; docId++) {
-        // Skip deleted documents
         Bits liveDocs = MultiBits.getLiveDocs(reader);
         if (liveDocs != null && !liveDocs.get(docId)) {
           continue;
@@ -150,11 +112,9 @@ public class EFOTermMatcher {
 
         Document doc = storedFields.document(docId);
 
-        // Extract ID field
         String efoId = doc.get(EFOField.ID.getFieldName());
-
-        // Extract primary term
         String term = doc.get(EFOField.TERM.getFieldName());
+
         if (term != null && efoId != null) {
           String termLower = term.toLowerCase();
           termToIdCache.put(termLower, efoId);
@@ -162,14 +122,12 @@ public class EFOTermMatcher {
           allTermsLowercase.add(termLower);
           primaryTermCount++;
 
-          // Extract parent relationships
           String[] parents = doc.getValues(EFOField.PARENT.getFieldName());
           if (parents != null && parents.length > 0) {
             nodeParents.put(efoId, Arrays.asList(parents));
           }
         }
 
-        // Extract alternative term
         String altTerm = doc.get(EFOField.ALTERNATIVE_TERMS.getFieldName());
         if (altTerm != null) {
           String altTermLower = altTerm.toLowerCase();
@@ -182,7 +140,6 @@ public class EFOTermMatcher {
           altTermCount++;
         }
 
-        // Log progress
         if ((docId + 1) % LOG_PROGRESS_INTERVAL == 0) {
           log.debug("Processed {} / {} documents", docId + 1, maxDoc);
         }
@@ -199,15 +156,11 @@ public class EFOTermMatcher {
       indexManager.releaseSearcher(IndexName.EFO, searcher);
     }
 
-    // Build ancestor chains from collected parent relationships
     buildAncestorChainsFromParentMap(nodeParents);
   }
 
   /**
    * Builds ancestor chains from parent relationship map using memoization.
-   *
-   * <p>Time complexity: O(N) where N is the number of nodes, as each node is visited exactly once
-   * due to caching.
    *
    * @param nodeParents map of node ID to list of parent IDs
    */
@@ -235,9 +188,8 @@ public class EFOTermMatcher {
   /**
    * Recursively computes ancestors with memoization to avoid redundant computation.
    *
-   * <p>Each node is processed exactly once due to caching. The EFO ontology is primarily
-   * tree-structured, though it's technically a DAG. This method takes the first parent when
-   * multiple parents exist.
+   * <p>Takes the first parent when multiple parents exist, treating the EFO ontology as
+   * tree-structured.
    *
    * @param efoId the EFO ID to compute ancestors for
    * @param nodeParents map of node ID to parent IDs
@@ -247,46 +199,36 @@ public class EFOTermMatcher {
   private List<String> computeAncestorsWithMemoization(
       String efoId, Map<String, List<String>> nodeParents, Map<String, List<String>> cache) {
 
-    // Check cache first (memoization)
     if (cache.containsKey(efoId)) {
-      return new ArrayList<>(cache.get(efoId)); // Return copy to prevent mutation
+      return new ArrayList<>(cache.get(efoId));
     }
 
     List<String> ancestors = new ArrayList<>();
     List<String> parents = nodeParents.get(efoId);
 
     if (parents == null || parents.isEmpty()) {
-      // Root node - no ancestors
       cache.put(efoId, ancestors);
       return ancestors;
     }
 
-    // Take first parent (EFO is primarily tree-structured)
     String parentId = parents.get(0);
     String parentTerm = idToTermCache.get(parentId);
 
     if (parentTerm != null) {
-      // Recursively get parent's ancestors (memoized)
       List<String> parentAncestors = computeAncestorsWithMemoization(parentId, nodeParents, cache);
-
-      // Build this node's ancestors: parent's ancestors + parent itself
       ancestors.addAll(parentAncestors);
       ancestors.add(parentTerm);
     }
 
-    // Cache the result
     cache.put(efoId, new ArrayList<>(ancestors));
     return ancestors;
   }
 
   /**
-   * Finds all EFO terms present in the given content string.
+   * Finds all EFO terms present in the given content string using word boundary matching.
    *
-   * <p>Uses word boundary matching to avoid partial matches (e.g., "phagocyte" won't match
-   * "macrophagocyte").
-   *
-   * <p><b>Performance:</b> O(T × C) where T = number of EFO terms (~15k), C = content length.
-   * Typical execution: 10-30ms for average submission content.
+   * <p>When multiple overlapping terms match, prefers longer terms. Deduplicates results when
+   * alternative terms map to the same primary term.
    *
    * @param content the text to search for EFO terms
    * @return list of matched EFO terms in original case (empty if content is null/empty)
@@ -297,27 +239,51 @@ public class EFOTermMatcher {
     }
 
     String contentLower = content.toLowerCase();
-    List<String> matches = new ArrayList<>();
+
+    // Collect all matches with their spans
+    List<TermMatch> allMatches = new ArrayList<>();
 
     for (String termLower : allTermsLowercase) {
-      // Use word boundary regex for accurate matching
-      if (Pattern.compile("\\b" + Pattern.quote(termLower) + "\\b").matcher(contentLower).find()) {
+      Pattern pattern = Pattern.compile("\\b" + Pattern.quote(termLower) + "\\b");
+      Matcher matcher = pattern.matcher(contentLower);
 
-        // Get original case term via ID lookup
-        String efoId = termToIdCache.get(termLower);
-        if (efoId != null) {
-          String originalTerm = idToTermCache.get(efoId);
-          if (originalTerm != null) {
-            matches.add(originalTerm);
-          }
-        } else {
-          // Alternative term without ID - add as lowercase
-          matches.add(termLower);
-        }
+      while (matcher.find()) {
+        allMatches.add(new TermMatch(termLower, matcher.start(), matcher.end()));
       }
     }
 
-    return matches;
+    // Sort by length (descending) then by start position
+    allMatches.sort(
+        Comparator.comparingInt((TermMatch m) -> m.end - m.start)
+            .reversed()
+            .thenComparingInt(m -> m.start));
+
+    // Select non-overlapping matches (greedy, prefer longer)
+    List<TermMatch> selectedMatches = new ArrayList<>();
+    for (TermMatch match : allMatches) {
+      boolean overlaps = selectedMatches.stream().anyMatch(m -> match.overlaps(m));
+
+      if (!overlaps) {
+        selectedMatches.add(match);
+      }
+    }
+
+    // Map to primary terms and deduplicate
+    Set<String> uniqueTerms = new LinkedHashSet<>();
+    for (TermMatch match : selectedMatches) {
+      String efoId = termToIdCache.get(match.term);
+      if (efoId != null) {
+        String originalTerm = idToTermCache.get(efoId);
+        if (originalTerm != null) {
+          uniqueTerms.add(originalTerm);
+        }
+      } else {
+        // Alternative term without primary mapping
+        uniqueTerms.add(match.term);
+      }
+    }
+
+    return new ArrayList<>(uniqueTerms);
   }
 
   /**
@@ -365,7 +331,7 @@ public class EFOTermMatcher {
   }
 
   /**
-   * Gets all unique EFO terms (for testing/debugging).
+   * Gets all unique EFO terms.
    *
    * @return unmodifiable set of all lowercase terms
    */
@@ -382,5 +348,22 @@ public class EFOTermMatcher {
     return String.format(
         "EFOTermMatcher[terms=%d, withHierarchy=%d, nodes=%d]",
         allTermsLowercase.size(), termToAncestorsCache.size(), idToTermCache.size());
+  }
+
+  /** Represents a matched term with its span in the content. */
+  private static class TermMatch {
+    final String term;
+    final int start;
+    final int end;
+
+    TermMatch(String term, int start, int end) {
+      this.term = term;
+      this.start = start;
+      this.end = end;
+    }
+
+    boolean overlaps(TermMatch other) {
+      return this.start < other.end && this.end > other.start;
+    }
   }
 }

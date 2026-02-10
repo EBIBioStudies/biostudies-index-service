@@ -32,8 +32,6 @@ class SubmissionDocumentCreatorTest {
   @Mock private TaxonomyManager taxonomyManager;
   @Mock private CollectionRegistryService collectionRegistryService;
   @Mock private EFOTermMatcher efoTermMatcher;
-  @Mock private CollectionRegistry collectionRegistry;
-  @Mock private CollectionDescriptor collectionDescriptor;
 
   private SubmissionDocumentCreator creator;
   private Map<String, Object> valueMap;
