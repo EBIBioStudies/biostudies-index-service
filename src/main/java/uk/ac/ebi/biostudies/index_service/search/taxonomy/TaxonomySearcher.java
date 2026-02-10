@@ -416,18 +416,22 @@ public class TaxonomySearcher {
     StringBuilder result = new StringBuilder();
 
     for (TaxonomyNode node : nodes) {
-      result
-          .append(node.term())
-          .append("|o|")
-          // Only include efoId if node has children (matches old autocomplete behavior)
-          .append(node.hasChildren() && node.efoId() != null ? node.efoId() : "")
-          .append("|")
-          .append(node.count())
-          .append("\\n"); // Escaped newline for autocomplete format
+      String line = node.term() + "|o|"
+          + (node.hasChildren() && node.efoId() != null ? node.efoId() : "")
+          + "|"
+          + node.count();
+
+      log.debug("Autocomplete line: [{}]", line);  // ← Add this
+
+      result.append(line).append("\n");
     }
 
-    return result.toString();
+    String response = result.toString();
+    log.debug("Full autocomplete response:\n{}", response);  // ← And this
+
+    return response;
   }
+
 
   /**
    * Gets children of a specific EFO term by EFO ID with submission counts.
