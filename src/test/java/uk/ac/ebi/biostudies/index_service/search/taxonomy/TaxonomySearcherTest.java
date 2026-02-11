@@ -734,7 +734,7 @@ class TaxonomySearcherTest {
       String result = taxonomySearcher.formatAsAutocompleteResponse(nodes);
 
       // THEN
-      assertThat(result).isEqualTo("cell type|o|http://www.ebi.ac.uk/efo/efo_0000324|5\\n");
+      assertThat(result).isEqualTo("cell type|o|http://www.ebi.ac.uk/efo/efo_0000324|5\n");
     }
 
     @Test
@@ -750,7 +750,7 @@ class TaxonomySearcherTest {
       String result = taxonomySearcher.formatAsAutocompleteResponse(nodes);
 
       // THEN - efoId should be empty for leaf nodes
-      assertThat(result).isEqualTo("odontoclast|o||1\\n");
+      assertThat(result).isEqualTo("odontoclast|o||1\n");
     }
 
     @Test
@@ -769,9 +769,9 @@ class TaxonomySearcherTest {
       // THEN
       assertThat(result)
           .isEqualTo(
-              "cell type|o|http://www.ebi.ac.uk/efo/efo_0000324|5\\n"
-                  + "leukocyte|o|http://purl.obolibrary.org/obo/CL_0000738|2\\n"
-                  + "odontoclast|o||1\\n");
+              "cell type|o|http://www.ebi.ac.uk/efo/efo_0000324|5\n"
+                  + "leukocyte|o|http://purl.obolibrary.org/obo/CL_0000738|2\n"
+                  + "odontoclast|o||1\n");
     }
 
     @Test
@@ -784,7 +784,7 @@ class TaxonomySearcherTest {
       String result = taxonomySearcher.formatAsAutocompleteResponse(nodes);
 
       // THEN
-      assertThat(result).isEqualTo("unknown term|o||1\\n");
+      assertThat(result).isEqualTo("unknown term|o||1\n");
     }
 
     @Test
@@ -797,7 +797,7 @@ class TaxonomySearcherTest {
       String result = taxonomySearcher.formatAsAutocompleteResponse(nodes);
 
       // THEN - Should show empty efoId since it's null
-      assertThat(result).isEqualTo("term|o||1\\n");
+      assertThat(result).isEqualTo("term|o||1\n");
     }
 
     @Test
@@ -833,7 +833,7 @@ class TaxonomySearcherTest {
       String result = taxonomySearcher.formatAsAutocompleteResponse(nodes);
 
       // THEN
-      assertThat(result).isEqualTo("CD4+ T cell|o||5\\n" + "α-cell|o||3\\n");
+      assertThat(result).isEqualTo("CD4+ T cell|o||5\n" + "α-cell|o||3\n");
     }
 
     @Test
@@ -849,7 +849,7 @@ class TaxonomySearcherTest {
       String result = taxonomySearcher.formatAsAutocompleteResponse(nodes);
 
       // THEN
-      assertThat(result).isEqualTo("bone marrow|o||2\\n" + "organism part|o||1\\n");
+      assertThat(result).isEqualTo("bone marrow|o||2\n" + "organism part|o||1\n");
     }
 
     @Test
@@ -862,7 +862,7 @@ class TaxonomySearcherTest {
       String result = taxonomySearcher.formatAsAutocompleteResponse(nodes);
 
       // THEN
-      assertThat(result).isEqualTo("rare term|o||0\\n");
+      assertThat(result).isEqualTo("rare term|o||0\n");
     }
 
     @Test
@@ -876,7 +876,7 @@ class TaxonomySearcherTest {
       String result = taxonomySearcher.formatAsAutocompleteResponse(nodes);
 
       // THEN
-      assertThat(result).isEqualTo("common term|o||" + Integer.MAX_VALUE + "\\n");
+      assertThat(result).isEqualTo("common term|o||" + Integer.MAX_VALUE + "\n");
     }
   }
 

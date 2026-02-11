@@ -139,7 +139,7 @@ class EFOTermMatcherTest {
   @Test
   void initialize_shouldLoadAllTermsFromIndex() {
     assertThat(efoTermMatcher.getAllTerms())
-        .hasSize(7) // 6 primary + 1 alternative
+        .hasSize(8) // 6 primary + 2 alternative
         .contains(
             "cell",
             "leukocyte",
