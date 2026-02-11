@@ -11,6 +11,7 @@ import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -20,8 +21,8 @@ import uk.ac.ebi.biostudies.index_service.index.management.IndexManager;
 
 /**
  * Generic executor for Lucene queries that returns raw {@link Document} instances rather than
- * domain-specific objects. Provides both paginated and non-paginated query execution with support
- * for custom sorting.
+ * domain-specific objects. Provides paginated, non-paginated, and search-after query execution with
+ * support for custom sorting.
  *
  * <p>This service manages the searcher lifecycle through {@link IndexManager}'s acquire/release
  * pattern, ensuring proper resource management across concurrent searches. The {@link IndexManager}
@@ -33,18 +34,32 @@ import uk.ac.ebi.biostudies.index_service.index.management.IndexManager;
  * <p><b>Resource Management:</b> All searcher instances are automatically released via try-finally
  * blocks, even when exceptions occur.
  *
- * <p><b>Pagination Limits:</b> Page size is limited to {@value #MAX_PAGE_SIZE} to prevent memory
- * exhaustion. Requests exceeding this limit will throw {@link IllegalArgumentException}.
+ * <p><b>Pagination Modes:</b>
+ *
+ * <ul>
+ *   <li><b>Offset pagination</b> - Traditional page/pageSize, limited to {@value
+ *       #MAX_TOTAL_DOCS_FOR_PAGINATION} scored documents
+ *   <li><b>Search-after pagination</b> - Efficient cursor-based pagination for deep result sets, no
+ *       depth limits
+ *   <li><b>Non-paginated</b> - Returns all results up to {@value #DEFAULT_MAX_RESULTS}
+ * </ul>
  *
  * <p>Example usage:
  *
  * <pre>
+ * // Offset pagination
  * SearchCriteria criteria = new SearchCriteria.Builder(query)
  *     .page(1, 20)
  *     .build();
  * PaginatedResult&lt;Document&gt; result = executor.execute(IndexName.BIOSTUDIES, criteria);
- * List&lt;Document&gt; docs = result.results();
- * long totalHits = result.totalHits();
+ *
+ * // Search-after pagination (for deep results)
+ * SearchCriteria searchAfter = new SearchCriteria.Builder(query)
+ *     .sort(sort)
+ *     .searchAfter(lastScoreDoc)
+ *     .limit(1000)
+ *     .build();
+ * PaginatedResult&lt;Document&gt; nextPage = executor.execute(IndexName.BIOSTUDIES, searchAfter);
  * </pre>
  *
  * @see IndexManager
@@ -66,7 +81,7 @@ public class LuceneQueryExecutor {
 
   /**
    * Maximum number of documents to score for deep pagination. Limits memory usage and prevents
-   * performance degradation on very deep pages.
+   * performance degradation on very deep pages. Does not apply to search-after pagination.
    */
   private static final int MAX_TOTAL_DOCS_FOR_PAGINATION = 50000;
 
@@ -85,19 +100,25 @@ public class LuceneQueryExecutor {
   /**
    * Executes a search based on the provided criteria.
    *
-   * <p>If the criteria includes pagination, returns a specific page of results. Otherwise, returns
-   * all matching documents up to {@value #DEFAULT_MAX_RESULTS}.
+   * <p>Supports three execution modes:
    *
-   * <p><b>Performance note:</b> Lucene must internally score all documents up to the requested page
-   * to maintain score/sort order. For deep pagination needs (page * pageSize &gt; {@value
-   * #MAX_TOTAL_DOCS_FOR_PAGINATION}), consider using Lucene's search-after API instead.
+   * <ul>
+   *   <li><b>Search-after</b> - Efficient deep pagination using cursor (no depth limit)
+   *   <li><b>Offset pagination</b> - Traditional page/pageSize (limited to {@value
+   *       #MAX_TOTAL_DOCS_FOR_PAGINATION})
+   *   <li><b>Non-paginated</b> - Returns all results up to {@value #DEFAULT_MAX_RESULTS}
+   * </ul>
+   *
+   * <p><b>Performance note:</b> For deep pagination (page * pageSize &gt; {@value
+   * #MAX_TOTAL_DOCS_FOR_PAGINATION}), use search-after mode via {@link
+   * SearchCriteria.Builder#searchAfter(ScoreDoc)}.
    *
    * @param indexName the name of the index to search against
    * @param criteria the search criteria including query, pagination, and sorting options
    * @return a {@link PaginatedResult} containing documents, total hits, and pagination metadata
    * @throws IOException if an I/O error occurs during search
    * @throws IllegalArgumentException if pageSize &gt; {@value #MAX_PAGE_SIZE}, or page * pageSize
-   *     &gt; {@value #MAX_TOTAL_DOCS_FOR_PAGINATION}
+   *     &gt; {@value #MAX_TOTAL_DOCS_FOR_PAGINATION} (for offset pagination only)
    * @throws NullPointerException if indexName or criteria is null
    */
   public PaginatedResult<Document> execute(IndexName indexName, SearchCriteria criteria)
@@ -105,14 +126,88 @@ public class LuceneQueryExecutor {
     Objects.requireNonNull(indexName, "indexName must not be null");
     Objects.requireNonNull(criteria, "criteria must not be null");
 
-    if (criteria.isPaginated()) {
+    if (criteria.isSearchAfter()) {
+      return executeSearchAfter(indexName, criteria);
+    } else if (criteria.isPaginated()) {
       return executePaginated(indexName, criteria);
     } else {
       return executeNonPaginated(indexName, criteria);
     }
   }
 
-  /** Executes a paginated search. */
+  /**
+   * Executes a search-after pagination query.
+   *
+   * <p>Search-after is Lucene's efficient approach for paginating through large result sets. Unlike
+   * offset pagination, it doesn't require scoring all previous documents, making it O(pageSize)
+   * regardless of depth.
+   *
+   * <p><b>Advantages over offset pagination:</b>
+   *
+   * <ul>
+   *   <li>No depth limit - can paginate through millions of results
+   *   <li>Constant performance - doesn't slow down for deep pages
+   *   <li>Lower memory usage - only scores requested page
+   * </ul>
+   *
+   * @param indexName the index to search
+   * @param criteria search criteria with searchAfter cursor and sort
+   * @return paginated results after the cursor position
+   * @throws IOException if search fails
+   */
+  private PaginatedResult<Document> executeSearchAfter(IndexName indexName, SearchCriteria criteria)
+      throws IOException {
+
+    Query query = criteria.getQuery();
+    Sort sort = criteria.getSort(); // Required for search-after (validated in SearchCriteria)
+    ScoreDoc searchAfter = criteria.getSearchAfter();
+
+    // Determine page size from limit or use default
+    int pageSize =
+        criteria.getLimit() != null ? Math.min(criteria.getLimit(), MAX_PAGE_SIZE) : MAX_PAGE_SIZE;
+
+    IndexSearcher searcher = indexManager.acquireSearcher(indexName);
+    try {
+      // Use searchAfter for efficient deep pagination
+      TopDocs topDocs = searcher.searchAfter(searchAfter, query, pageSize, sort);
+
+      List<Document> documents = new ArrayList<>(topDocs.scoreDocs.length);
+      StoredFields storedFields = searcher.storedFields();
+
+      for (int docIndex = 0; docIndex < topDocs.scoreDocs.length; docIndex++) {
+        Document doc = storedFields.document(topDocs.scoreDocs[docIndex].doc);
+        documents.add(doc);
+      }
+
+      boolean isTotalHitsExact = topDocs.totalHits.relation() == TotalHits.Relation.EQUAL_TO;
+
+      // Get last ScoreDoc for continuation (null if no results)
+      ScoreDoc lastScoreDoc =
+          topDocs.scoreDocs.length > 0 ? topDocs.scoreDocs[topDocs.scoreDocs.length - 1] : null;
+
+      log.debug(
+          "Search-after query executed on index={}, returned {} documents, totalHits={}, exact={}, hasMore={}",
+          indexName,
+          documents.size(),
+          topDocs.totalHits.value(),
+          isTotalHitsExact,
+          lastScoreDoc != null);
+
+      // For search-after, page number is 0 (cursor-based, not page-based)
+      return new PaginatedResult<>(
+          documents,
+          0, // page number not applicable for search-after
+          pageSize,
+          topDocs.totalHits.value(),
+          isTotalHitsExact,
+          lastScoreDoc);
+
+    } finally {
+      indexManager.releaseSearcher(indexName, searcher);
+    }
+  }
+
+  /** Executes a paginated search using offset-based pagination. */
   private PaginatedResult<Document> executePaginated(IndexName indexName, SearchCriteria criteria)
       throws IOException {
 
@@ -157,7 +252,7 @@ public class LuceneQueryExecutor {
         boolean isTotalHitsExact = topDocs.totalHits.relation() == TotalHits.Relation.EQUAL_TO;
 
         return new PaginatedResult<>(
-            List.of(), page, pageSize, topDocs.totalHits.value(), isTotalHitsExact);
+            List.of(), page, pageSize, topDocs.totalHits.value(), isTotalHitsExact, null);
       }
 
       int end = Math.min(start + pageSize, topDocs.scoreDocs.length);
@@ -172,8 +267,11 @@ public class LuceneQueryExecutor {
 
       boolean isTotalHitsExact = topDocs.totalHits.relation() == TotalHits.Relation.EQUAL_TO;
 
+      // Include last ScoreDoc for potential search-after continuation
+      ScoreDoc lastScoreDoc = end > 0 ? topDocs.scoreDocs[end - 1] : null;
+
       log.debug(
-          "Query executed on index={}, page={}, pageSize={}, totalHits={}, exact={}",
+          "Offset pagination query executed on index={}, page={}, pageSize={}, totalHits={}, exact={}",
           indexName,
           page,
           pageSize,
@@ -181,7 +279,7 @@ public class LuceneQueryExecutor {
           isTotalHitsExact);
 
       return new PaginatedResult<>(
-          documents, page, pageSize, topDocs.totalHits.value(), isTotalHitsExact);
+          documents, page, pageSize, topDocs.totalHits.value(), isTotalHitsExact, lastScoreDoc);
 
     } finally {
       indexManager.releaseSearcher(indexName, searcher);
@@ -224,6 +322,10 @@ public class LuceneQueryExecutor {
 
       boolean isTotalHitsExact = topDocs.totalHits.relation() == TotalHits.Relation.EQUAL_TO;
 
+      // Include last ScoreDoc for potential search-after continuation
+      ScoreDoc lastScoreDoc =
+          topDocs.scoreDocs.length > 0 ? topDocs.scoreDocs[topDocs.scoreDocs.length - 1] : null;
+
       log.debug(
           "Non-paginated query executed on index={}, returned {} of {} total hits",
           indexName,
@@ -231,7 +333,12 @@ public class LuceneQueryExecutor {
           topDocs.totalHits.value());
 
       return new PaginatedResult<>(
-          documents, 1, documents.size(), topDocs.totalHits.value(), isTotalHitsExact);
+          documents,
+          1,
+          documents.size(),
+          topDocs.totalHits.value(),
+          isTotalHitsExact,
+          lastScoreDoc);
 
     } finally {
       indexManager.releaseSearcher(indexName, searcher);

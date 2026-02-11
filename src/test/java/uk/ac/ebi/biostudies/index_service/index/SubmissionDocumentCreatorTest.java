@@ -8,6 +8,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import org.apache.lucene.document.*;
 import org.apache.lucene.facet.FacetsConfig;
+import org.apache.lucene.facet.sortedset.SortedSetDocValuesFacetField;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.util.BytesRef;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import uk.ac.ebi.biostudies.index_service.Constants;
 import uk.ac.ebi.biostudies.index_service.TaxonomyManager;
+import uk.ac.ebi.biostudies.index_service.autocomplete.EFOTermMatcher;
 import uk.ac.ebi.biostudies.index_service.registry.model.*;
 import uk.ac.ebi.biostudies.index_service.registry.model.FieldType;
 import uk.ac.ebi.biostudies.index_service.registry.service.CollectionRegistryService;
@@ -29,8 +31,7 @@ class SubmissionDocumentCreatorTest {
 
   @Mock private TaxonomyManager taxonomyManager;
   @Mock private CollectionRegistryService collectionRegistryService;
-  @Mock private CollectionRegistry collectionRegistry;
-  @Mock private CollectionDescriptor collectionDescriptor;
+  @Mock private EFOTermMatcher efoTermMatcher;
 
   private SubmissionDocumentCreator creator;
   private Map<String, Object> valueMap;
@@ -38,12 +39,15 @@ class SubmissionDocumentCreatorTest {
 
   @BeforeEach
   void setUp() {
-    creator = new SubmissionDocumentCreator(taxonomyManager, collectionRegistryService);
+    creator = new SubmissionDocumentCreator(taxonomyManager, collectionRegistryService, efoTermMatcher);
 
     valueMap = new HashMap<>();
     valueMap.put(FieldName.FACET_COLLECTION.getName(), "test_collection");
 
     testProperties = createTestPropertyDescriptors();
+
+    // Default mock behavior: no EFO terms found (most tests don't need EFO facets)
+    when(efoTermMatcher.findEFOTerms(anyString())).thenReturn(Collections.emptyList());
   }
 
   @Test
@@ -66,16 +70,16 @@ class SubmissionDocumentCreatorTest {
   void createSubmissionDocument_happyPath_returnsFacetedDocument() throws IOException {
     // GIVEN
     valueMap.put(FieldName.FACET_COLLECTION.getName(), "test_collection");
+    valueMap.put(Constants.CONTENT, "test content"); // Add content for EFO processing
 
-    // Match ACTUAL production call (not deprecated chain)
     when(collectionRegistryService.getPublicAndCollectionRelatedProperties("test_collection".toLowerCase()))
         .thenReturn(Collections.emptyList());
 
     FacetsConfig facetsConfig = mock(FacetsConfig.class);
     when(taxonomyManager.getFacetsConfig()).thenReturn(facetsConfig);
 
-    // Exact single-arg overload: build(Document)
-    lenient().doAnswer(invocation -> invocation.getArgument(0))  // arg[0] = Document
+    // Mock facetsConfig.build() to return the input document
+    lenient().doAnswer(invocation -> invocation.getArgument(0))
         .when(facetsConfig).build(any(Document.class));
 
     // WHEN
@@ -85,6 +89,7 @@ class SubmissionDocumentCreatorTest {
     assertThat(result).isNotNull();
     verify(collectionRegistryService).getPublicAndCollectionRelatedProperties("test_collection");
     verify(taxonomyManager).getFacetsConfig();
+    verify(efoTermMatcher).findEFOTerms("test content"); // Verify EFO processing called
   }
 
   @Test
@@ -92,16 +97,17 @@ class SubmissionDocumentCreatorTest {
     // GIVEN
     valueMap.put(FieldName.FACET_COLLECTION.getName(), "testCollection");
     valueMap.put(Constants.HAS_FILE_PARSING_ERROR, true);
+    valueMap.put(Constants.CONTENT, "test content");
+
     when(collectionRegistryService.getPublicAndCollectionRelatedProperties("testcollection"))
         .thenReturn(Collections.emptyList());
 
     FacetsConfig facetsConfig = mock(FacetsConfig.class);
     when(taxonomyManager.getFacetsConfig()).thenReturn(facetsConfig);
 
-    // Stub SINGLE-ARG build(Document) overload exactly
     lenient()
         .when(facetsConfig.build(any(Document.class)))
-        .thenAnswer(invocation -> invocation.getArgument(0)); // Return input doc (arg 0)
+        .thenAnswer(invocation -> invocation.getArgument(0));
 
     // WHEN
     Document result = creator.createSubmissionDocument(valueMap);
@@ -114,6 +120,52 @@ class SubmissionDocumentCreatorTest {
   }
 
   @Test
+  void createSubmissionDocument_withEFOTerms_addsFacetFields() throws IOException {
+    // GIVEN
+    valueMap.put(FieldName.FACET_COLLECTION.getName(), "test_collection");
+    valueMap.put(Constants.CONTENT, "Study of odontoclast function");
+
+    when(collectionRegistryService.getPublicAndCollectionRelatedProperties("test_collection"))
+        .thenReturn(Collections.emptyList());
+
+    // Mock EFO term matcher to find "odontoclast"
+    when(efoTermMatcher.findEFOTerms("Study of odontoclast function"))
+        .thenReturn(List.of("odontoclast"));
+
+    // Mock ancestors: odontoclast → osteoclast → phagocyte
+    when(efoTermMatcher.getAncestors("odontoclast"))
+        .thenReturn(List.of("phagocyte", "osteoclast"));
+
+    FacetsConfig facetsConfig = mock(FacetsConfig.class);
+    when(taxonomyManager.getFacetsConfig()).thenReturn(facetsConfig);
+
+    lenient()
+        .when(facetsConfig.build(any(Document.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    // WHEN
+    Document result = creator.createSubmissionDocument(valueMap);
+
+    // THEN
+    assertThat(result).isNotNull();
+
+    // Assert facet fields by TYPE, and validate facet DIMENSION via toString()
+    List<SortedSetDocValuesFacetField> efoFacetFields =
+        result.getFields().stream()
+            .filter(f -> f instanceof SortedSetDocValuesFacetField)
+            .map(f -> (SortedSetDocValuesFacetField) f)
+            .filter(f -> f.toString().contains("dim=efo"))
+            .toList();
+
+    assertThat(efoFacetFields).isNotEmpty();
+    assertThat(efoFacetFields.stream().map(Object::toString).toList())
+        .anySatisfy(s -> assertThat(s).contains("path=phagocyte"));
+
+    verify(efoTermMatcher).findEFOTerms("Study of odontoclast function");
+    verify(efoTermMatcher).getAncestors("odontoclast");
+  }
+
+  @Test
   void addFieldToDocument_tokenizedString_addsTextField() {
     valueMap.put("tokenized_field", "test value");
     PropertyDescriptor prop = testProperties.get(0); // TOKENIZED_STRING
@@ -121,7 +173,6 @@ class SubmissionDocumentCreatorTest {
 
     creator.addFieldToDocument(doc, valueMap, prop);
 
-    // ✅ FIXED: IndexableField[] → List<Field>
     List<Field> fields =
         Arrays.stream(doc.getFields("tokenized_field"))
             .map(f -> (Field) f)
@@ -167,7 +218,6 @@ class SubmissionDocumentCreatorTest {
 
     creator.addFieldToDocument(doc, valueMap, prop);
 
-    // ✅ FIXED
     List<Field> fields =
         Arrays.stream(doc.getFields("un_tokenized_field"))
             .map(f -> (Field) f)
@@ -178,7 +228,7 @@ class SubmissionDocumentCreatorTest {
     Field mainField = fields.get(0);
     assertThat(mainField.stringValue()).isEqualTo("sortable value");
 
-    // Sort field (second) ✅ FIXED binaryValue()
+    // Sort field (second)
     SortedDocValuesField sortField = (SortedDocValuesField) fields.get(1);
     BytesRef bytesRef = sortField.binaryValue();
     assertThat(bytesRef.utf8ToString()).isEqualTo("sortable value");
@@ -197,9 +247,6 @@ class SubmissionDocumentCreatorTest {
 
     assertThat(fields).hasSize(3);
 
-    // Verify LongPoint exists and has correct value
-    Optional<LongPoint> longPoint =
-        fields.stream().filter(f -> f instanceof LongPoint).map(f -> (LongPoint) f).findFirst();
     assertThat(fields).anySatisfy(f -> assertThat(f).isInstanceOf(LongPoint.class));
     assertThat(fields)
         .anySatisfy(f -> assertThat(f).isInstanceOf(SortedNumericDocValuesField.class));
@@ -249,16 +296,23 @@ class SubmissionDocumentCreatorTest {
     assertThat(field.stringValue()).isEqualTo("Name|Size|");
   }
 
-  //  @Test
-  //  void addFileAttributes_withColumns_buildsPipeDelimitedString() {
-  //    Set<String> columns = Set.of("col1", "col2");
-  //    Document doc = new Document();
-  //
-  //    creator.addFileAttributes(doc, columns);
-  //
-  //    StringField field = (StringField) doc.getField(Constants.FILE_ATTRIBUTE_NAMES);
-  //    assertThat(field.stringValue()).isEqualTo("Name|Size|col1|col2|");
-  //  }
+  @Test
+  void addFileAttributes_withColumns_buildsPipeDelimitedString() {
+    Set<String> columns = new LinkedHashSet<>(); // Use LinkedHashSet for predictable order
+    columns.add("col1");
+    columns.add("col2");
+    Document doc = new Document();
+
+    creator.addFileAttributes(doc, columns);
+
+    StringField field = (StringField) doc.getField(Constants.FILE_ATTRIBUTE_NAMES);
+    String value = field.stringValue();
+
+    // Check that it starts with "Name|Size|" and contains both columns
+    assertThat(value).startsWith("Name|Size|");
+    assertThat(value).contains("col1");
+    assertThat(value).contains("col2");
+  }
 
   private List<PropertyDescriptor> createTestPropertyDescriptors() {
     return List.of(
