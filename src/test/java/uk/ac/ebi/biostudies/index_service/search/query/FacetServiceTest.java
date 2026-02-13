@@ -45,6 +45,9 @@ import uk.ac.ebi.biostudies.index_service.registry.model.CollectionRegistry;
 import uk.ac.ebi.biostudies.index_service.registry.model.FieldType;
 import uk.ac.ebi.biostudies.index_service.registry.model.PropertyDescriptor;
 import uk.ac.ebi.biostudies.index_service.registry.service.CollectionRegistryService;
+import uk.ac.ebi.biostudies.index_service.search.FacetDimensionDTO;
+import uk.ac.ebi.biostudies.index_service.search.FacetValueDTO;
+import uk.ac.ebi.biostudies.index_service.search.security.SecurityQueryBuilder;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -54,6 +57,8 @@ class FacetServiceTest {
   @Mock private IndexManager indexManager;
   @Mock private TaxonomyManager taxonomyManager;
   @Mock private CollectionRegistryService collectionRegistryService;
+  @Mock private LuceneQueryBuilder luceneQueryBuilder;
+  @Mock private SecurityQueryBuilder securityQueryBuilder;
   @Mock private IndexSearcher indexSearcher;
   @Mock private CollectionRegistry collectionRegistry;
   @Mock private SecurityContext securityContext;
@@ -76,7 +81,12 @@ class FacetServiceTest {
 
   @BeforeEach
   void setUp() throws Exception {
-    facetService = new FacetService(indexManager, taxonomyManager, collectionRegistryService);
+    facetService =
+        new FacetService(
+            indexManager,
+            taxonomyManager,
+            collectionRegistryService,
+            securityQueryBuilder);
     facetsConfig = new FacetsConfig();
     baseQuery = new TermQuery(new Term("content", "test"));
 
@@ -561,7 +571,7 @@ class FacetServiceTest {
       when(collectionRegistry.getPropertyDescriptor("title")).thenReturn(nonFacet);
 
       // When
-      FacetService.FacetDimension result =
+      FacetDimensionDTO result =
           facetService.getDimension("test", "title", baseQuery, new HashMap<>());
 
       // Then
@@ -577,7 +587,7 @@ class FacetServiceTest {
       when(collectionRegistry.getPropertyDescriptor("unknown")).thenReturn(null);
 
       // When
-      FacetService.FacetDimension result =
+      FacetDimensionDTO result =
           facetService.getDimension("test", "unknown", baseQuery, new HashMap<>());
 
       // Then
@@ -598,7 +608,7 @@ class FacetServiceTest {
       when(securityContext.getAuthentication()).thenReturn(null);
 
       // When
-      FacetService.FacetDimension result =
+      FacetDimensionDTO result =
           facetService.getDimension("test", "internal_status", baseQuery, new HashMap<>());
 
       // Then
@@ -621,7 +631,7 @@ class FacetServiceTest {
       when(authentication.getPrincipal()).thenReturn("user@example.com");
 
       // When
-      FacetService.FacetDimension result =
+      FacetDimensionDTO result =
           facetService.getDimension("test", "internal_status", baseQuery, new HashMap<>());
 
       // Then
@@ -637,7 +647,7 @@ class FacetServiceTest {
           .thenThrow(new IOException("Index error"));
 
       // When
-      FacetService.FacetDimension result =
+      FacetDimensionDTO result =
           facetService.getDimension("test", "organism", baseQuery, new HashMap<>());
 
       // Then
@@ -652,7 +662,7 @@ class FacetServiceTest {
       when(taxonomyManager.getFacetsConfig()).thenThrow(new RuntimeException("Unexpected error"));
 
       // When
-      FacetService.FacetDimension result =
+      FacetDimensionDTO result =
           facetService.getDimension("test", "organism", baseQuery, new HashMap<>());
 
       // Then
@@ -670,7 +680,7 @@ class FacetServiceTest {
       when(indexSearcher.getIndexReader()).thenThrow(new RuntimeException("Unexpected error"));
 
       // When
-      FacetService.FacetDimension result =
+      FacetDimensionDTO result =
           facetService.getDimension("test", "organism", baseQuery, new HashMap<>());
 
       // Then
@@ -689,86 +699,12 @@ class FacetServiceTest {
       when(collectionRegistry.getPropertyDescriptor("organism")).thenReturn(organismFacet);
 
       // When
-      FacetService.FacetDimension result =
+      FacetDimensionDTO result =
           facetService.getDimension("test", "organism", baseQuery, selectedFacets);
 
       // Then
       // Verify query was executed (result may be null due to mock setup)
       verify(indexManager).releaseSearcher(eq(IndexName.SUBMISSION), eq(indexSearcher));
-    }
-  }
-
-  @Nested
-  @DisplayName("Inner Classes Tests")
-  class InnerClassesTests {
-
-    @Test
-    @DisplayName("FacetDimension should store values correctly")
-    void facetDimensionShouldStoreValuesCorrectly() {
-      // Given
-      List<FacetService.FacetValue> values =
-          Arrays.asList(
-              new FacetService.FacetValue("Human", 100), new FacetService.FacetValue("Mouse", 50));
-
-      // When
-      FacetService.FacetDimension dimension =
-          new FacetService.FacetDimension("organism", "Organism", values);
-
-      // Then
-      assertEquals("organism", dimension.getName());
-      assertEquals("Organism", dimension.getTitle());
-      assertEquals(2, dimension.getValues().size());
-      assertEquals("Human", dimension.getValues().get(0).getLabel());
-      assertEquals(100, dimension.getValues().get(0).getCount());
-    }
-
-    @Test
-    @DisplayName("FacetDimension should handle empty values list")
-    void facetDimensionShouldHandleEmptyValuesList() {
-      // Given
-      List<FacetService.FacetValue> emptyValues = Collections.emptyList();
-
-      // When
-      FacetService.FacetDimension dimension =
-          new FacetService.FacetDimension("organism", "Organism", emptyValues);
-
-      // Then
-      assertEquals("organism", dimension.getName());
-      assertEquals("Organism", dimension.getTitle());
-      assertTrue(dimension.getValues().isEmpty());
-    }
-
-    @Test
-    @DisplayName("FacetValue should store label and count correctly")
-    void facetValueShouldStoreLabelAndCountCorrectly() {
-      // When
-      FacetService.FacetValue value = new FacetService.FacetValue("Homo sapiens", 42);
-
-      // Then
-      assertEquals("Homo sapiens", value.getLabel());
-      assertEquals(42, value.getCount());
-    }
-
-    @Test
-    @DisplayName("FacetValue should handle zero count")
-    void facetValueShouldHandleZeroCount() {
-      // When
-      FacetService.FacetValue value = new FacetService.FacetValue("Rare organism", 0);
-
-      // Then
-      assertEquals("Rare organism", value.getLabel());
-      assertEquals(0, value.getCount());
-    }
-
-    @Test
-    @DisplayName("FacetValue should handle large counts")
-    void facetValueShouldHandleLargeCounts() {
-      // When
-      FacetService.FacetValue value = new FacetService.FacetValue("Common organism", 1000000);
-
-      // Then
-      assertEquals("Common organism", value.getLabel());
-      assertEquals(1000000, value.getCount());
     }
   }
 
@@ -864,7 +800,7 @@ class FacetServiceTest {
       when(collectionRegistry.getPropertyDescriptor("organism")).thenReturn(organismFacet);
 
       // When
-      FacetService.FacetDimension result =
+      FacetDimensionDTO result =
           facetService.getDimension("test", "organism", baseQuery, null);
 
       // Then
