@@ -4,9 +4,11 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import uk.ac.ebi.biostudies.index_service.exceptions.ServiceUnavailableException;
+import uk.ac.ebi.biostudies.index_service.exceptions.SubmissionNotAccessibleException;
 import uk.ac.ebi.biostudies.index_service.rest.ApiError;
 import uk.ac.ebi.biostudies.index_service.rest.RestResponse;
 
@@ -21,6 +23,17 @@ public class GlobalExceptionHandler {
         new ApiError("WEBSOCKET_CLOSED", null, ex.getMessage(), HttpStatus.SC_SERVICE_UNAVAILABLE);
     return ResponseEntity.status(HttpStatus.SC_SERVICE_UNAVAILABLE)
         .body(RestResponse.error("Indexing unavailable", List.of(error)));
+  }
+
+  /**
+   * Maps permission errors to 403 Forbidden.
+   */
+  @ExceptionHandler(SubmissionNotAccessibleException.class)
+  public ResponseEntity<RestResponse<Void>> handleNotAccessible(SubmissionNotAccessibleException ex) {
+    ApiError error =
+        new ApiError("SUBMISSION_NOT_ACCESSIBLE", null, ex.getMessage(), HttpStatus.SC_FORBIDDEN);
+    return ResponseEntity.status(HttpStatus.SC_FORBIDDEN)
+        .body(RestResponse.error("Submission not accessible", List.of(error)));
   }
 
   // Catch-all for other exceptions

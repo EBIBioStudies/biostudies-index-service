@@ -1,5 +1,7 @@
 package uk.ac.ebi.biostudies.index_service.search.query;
 
+import static java.util.Objects.requireNonNull;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -45,7 +47,7 @@ public class EFOExpansionLookupIndex {
    * @throws NullPointerException if efoSearcher is null
    */
   public EFOExpansionLookupIndex(EFOSearcher efoSearcher) {
-    this.efoSearcher = java.util.Objects.requireNonNull(efoSearcher, "efoSearcher must not be null");
+    this.efoSearcher = requireNonNull(efoSearcher, "efoSearcher must not be null");
   }
 
   /**

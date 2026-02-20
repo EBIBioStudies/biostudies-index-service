@@ -15,6 +15,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.springframework.stereotype.Component;
 import uk.ac.ebi.biostudies.index_service.Constants;
+import uk.ac.ebi.biostudies.index_service.analysis.AnalyzerManager;
 import uk.ac.ebi.biostudies.index_service.index.IndexName;
 import uk.ac.ebi.biostudies.index_service.index.management.IndexManager;
 import uk.ac.ebi.biostudies.index_service.search.engine.PaginatedResult;
@@ -25,16 +26,14 @@ import uk.ac.ebi.biostudies.index_service.search.suggestion.SpellCheckSuggestion
 /**
  * Processes and enhances search results before building the final response.
  *
- * <p>This component applies the following enhancements to raw search results:
+ * <p><strong>Key optimizations:</strong>
  *
  * <ul>
- *   <li><strong>Snippet extraction</strong> - Replaces full content with highlighted snippets
- *   <li><strong>Spell suggestions</strong> - Generates alternative spellings for poor results
- *   <li><strong>Term filtering</strong> - Filters EFO/synonym expansions to only existing terms
- *   <li><strong>Facet formatting</strong> - Formats facets for UI display
+ *   <li><strong>Browse mode</strong> (empty query): content=null, lightweight results
+ *   <li><strong>Search mode</strong>: content=highlighted snippets only
+ *   <li>Spell suggestions only when results poor (&lt;6 hits)
+ *   <li>EFO/synonyms filtered to index-present terms only
  * </ul>
- *
- * <p>Use {@link #buildEnrichedResponse} to apply all enhancements and build the response DTO.
  */
 @Slf4j
 @Component
@@ -50,15 +49,19 @@ public class SearchResponseProcessor {
   private final SearchSnippetExtractor snippetExtractor;
   private final FacetFormatter facetFormatter;
   private final SpellCheckSuggestionService suggestionService;
+  private final AnalyzerManager analyzerManager;
 
   public SearchResponseProcessor(
       IndexManager indexManager,
       SearchSnippetExtractor snippetExtractor,
-      FacetFormatter facetFormatter, SpellCheckSuggestionService suggestionService) {
+      FacetFormatter facetFormatter,
+      SpellCheckSuggestionService suggestionService,
+      AnalyzerManager analyzerManager) {
     this.indexManager = indexManager;
     this.snippetExtractor = snippetExtractor;
     this.facetFormatter = facetFormatter;
     this.suggestionService = suggestionService;
+    this.analyzerManager = analyzerManager;
   }
 
   /**
@@ -82,7 +85,7 @@ public class SearchResponseProcessor {
    * @param queryResult the query result containing the Lucene query and expansion terms
    * @param drillDownQuery the drill-down query with applied facet filters
    * @return complete, enriched search response DTO ready for serialization
-   * @see #extractSnippets(List, Query)
+   * @see #extractSnippets(List, Query, boolean)
    * @see #getSpellingSuggestions(String, PaginatedResult)
    * @see #filterTermsByIndexPresence(Set, String)
    */
@@ -95,9 +98,11 @@ public class SearchResponseProcessor {
 
     // 1. Get hits from the paginated result
     List<SubmissionSearchHit> hits = result.results();
-    // 2. Apply snippet extraction to the content field
-    List<SubmissionSearchHit> hitsWithSnippets = extractSnippets(hits, queryResult.getQuery());
-    log.debug("Extracted snippets for {} hits", hitsWithSnippets.size());
+    // 2. Apply snippet extraction (content=null if no highlighting)
+    List<SubmissionSearchHit> hitsWithSnippets =
+        extractSnippets(hits, queryResult.getQuery(), request.isHighlightingEnabled());
+    log.debug("Applied snippets ({} hits, highlighting={})",
+        hitsWithSnippets.size(), request.isHighlightingEnabled());
 
     // 3. Get spelling suggestions if needed
     List<String> suggestions = getSpellingSuggestions(originalQueryString, result);
@@ -140,35 +145,46 @@ public class SearchResponseProcessor {
       searcher = indexManager.acquireSearcher(IndexName.SUBMISSION);
       IndexReader reader = searcher.getIndexReader();
 
-      Set<String> existingTerms = new HashSet<>();
+      Set<String> existing = new HashSet<>();
       int filteredCount = 0;
 
       for (String term : expandedTerms) {
-        // Check if term exists in the index with at least 1 document
-        Term luceneTerm = new Term(fieldName, term.toLowerCase());
-        int docFreq = reader.docFreq(luceneTerm);
+        // Analyze the term into tokens using the same analyzer as the field
+        List<String> tokens = analyzerManager.analyze(fieldName, term);
+        if (tokens.isEmpty()) {
+          filteredCount++;
+          continue;
+        }
 
-        if (docFreq > 0) {
-          existingTerms.add(term);
-          log.debug("Term '{}' exists in {} documents", term, docFreq);
+        // Heuristic: keep if ANY token exists in the index
+        boolean hasToken = false;
+        for (String token : tokens) {
+          int df = reader.docFreq(new Term(fieldName, token));
+          if (df > 0) {
+            hasToken = true;
+            break;
+          }
+        }
+
+        if (hasToken) {
+          existing.add(term);
         } else {
           filteredCount++;
-          log.debug("Term '{}' not found in index, filtering out", term);
         }
       }
 
       if (filteredCount > 0) {
         log.info(
-            "Filtered {} of {} expanded terms (not present in index)",
+            "Filtered {} of {} expanded terms (no analyzed tokens found in index)",
             filteredCount,
             expandedTerms.size());
       }
 
-      return existingTerms;
+      return existing;
 
     } catch (IOException e) {
       log.warn("Error filtering terms by index presence, returning all terms", e);
-      return expandedTerms; // Fallback: return all if check fails
+      return expandedTerms;
     } finally {
       if (searcher != null) {
         try {
@@ -234,37 +250,41 @@ public class SearchResponseProcessor {
   }
 
   /**
-   * Extracts highlighted snippets from the content field of each search hit.
+   * Extracts highlighted snippets from the content field, but only if highlighting enabled.
    *
-   * <p>Replaces full document content with context-aware snippets containing query term matches,
-   * improving result readability and reducing payload size.
+   * <p>If {@code highlightingEnabled} is false (empty query), returns hits with {@code
+   * content=null} to reduce payload size and match browsing behavior.
    *
-   * @param hits the original search hits with full content fields
-   * @param query the Lucene query used for highlighting term matches
-   * @return new list of search hits with content replaced by highlighted snippets
+   * @param hits original search hits (may contain full content)
+   * @param query Lucene query for highlighting
+   * @param highlightingEnabled true if query exists and highlighting should be applied
+   * @return hits with content=null (browse) or highlighted snippets (search)
    */
-  private List<SubmissionSearchHit> extractSnippets(List<SubmissionSearchHit> hits, Query query) {
-    return hits.stream().map(hit -> extractSnippet(hit, query)).toList();
+  private List<SubmissionSearchHit> extractSnippets(
+      List<SubmissionSearchHit> hits, Query query, boolean highlightingEnabled) {
+    return hits.stream().map(hit -> extractSnippet(hit, query, highlightingEnabled)).toList();
   }
 
   /**
-   * Extracts a highlighted snippet from a single search hit's content field.
+   * Replaces full content with highlighted snippet, or null if no highlighting.
    *
-   * <p>Creates a new immutable SearchHit with the content field replaced by a snippet containing
-   * highlighted query terms with surrounding context.
+   * <p><strong>Browse mode</strong> (empty query): {@code content=null} - lightweight results
    *
-   * @param hit the original search hit with full content
-   * @param query the Lucene query for identifying terms to highlight
-   * @return a new SearchHit with content replaced by an extracted snippet
+   * <p><strong>Search mode</strong>: {@code content=snippet} - highlighted context around query
+   * terms
    */
-  private SubmissionSearchHit extractSnippet(SubmissionSearchHit hit, Query query) {
-    String snippet =
-        snippetExtractor.extractSnippet(
-            query,
-            "content", // field name to extract from
-            hit.content(),
-            true // fragmentOnly - return snippet, not full content
-            );
+  private SubmissionSearchHit extractSnippet(
+      SubmissionSearchHit hit, Query query, boolean highlightingEnabled) {
+    String content = null;
+    if (highlightingEnabled) {
+      content =
+          snippetExtractor.extractSnippet(
+              query,
+              "content", // field name to extract from
+              hit.content(),
+              true // fragmentOnly - return snippet, not full content
+              );
+    }
 
     // Create new immutable SearchHit with snippet
     return new SubmissionSearchHit(
@@ -277,7 +297,7 @@ public class SearchResponseProcessor {
         hit.releaseDate(),
         hit.views(),
         hit.isPublic(),
-        snippet // replaced content
+        content // replaced content
         );
   }
 
@@ -325,7 +345,6 @@ public class SearchResponseProcessor {
 
     Set<String> filteredSynonyms =
         filterTermsByIndexPresence(queryResult.getExpandedSynonyms(), Constants.CONTENT);
-
     return new SearchResponseDTO(
         paginatedResult.page(),
         paginatedResult.pageSize(),

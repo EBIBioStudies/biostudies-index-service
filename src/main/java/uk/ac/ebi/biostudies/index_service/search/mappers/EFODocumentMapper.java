@@ -1,4 +1,4 @@
-package uk.ac.ebi.biostudies.index_service.search.searchers.mappers;
+package uk.ac.ebi.biostudies.index_service.search.mappers;
 
 import java.util.List;
 import org.apache.lucene.document.Document;

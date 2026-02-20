@@ -48,6 +48,8 @@ class AnalyzerManagerTest {
 
     Analyzer customAnalyzer = Mockito.mock(Analyzer.class);
     when(analyzerFactory.createAnalyzer("custom")).thenReturn(customAnalyzer);
+    when(analyzerFactory.createAnalyzer(Mockito.isNull()))
+        .thenThrow(new IllegalStateException("analyzerName must not be null"));
 
     Map<String, PropertyDescriptor> map = new HashMap<>();
     map.put("field1", desc1);
@@ -86,7 +88,11 @@ class AnalyzerManagerTest {
   void testExpandableFieldsSetIsUnmodifiable() {
     PropertyDescriptor desc = Mockito.mock(PropertyDescriptor.class);
     when(desc.isFacet()).thenReturn(false);
+    when(desc.getAnalyzer()).thenReturn(null);
     when(desc.getExpanded()).thenReturn(true);
+
+    when(analyzerFactory.createAnalyzer(Mockito.isNull()))
+        .thenThrow(new IllegalStateException("analyzerName must not be null"));
 
     CollectionRegistry collectionRegistry = Mockito.mock(CollectionRegistry.class);
     when(collectionRegistry.getGlobalPropertyRegistry()).thenReturn(Map.of("expandField", desc));

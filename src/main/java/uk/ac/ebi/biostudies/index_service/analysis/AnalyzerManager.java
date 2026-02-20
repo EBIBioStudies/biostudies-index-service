@@ -1,13 +1,18 @@
 package uk.ac.ebi.biostudies.index_service.analysis;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.springframework.stereotype.Component;
 import uk.ac.ebi.biostudies.index_service.analysis.analyzers.AttributeFieldAnalyzer;
 import uk.ac.ebi.biostudies.index_service.registry.model.CollectionRegistry;
@@ -76,13 +81,12 @@ public class AnalyzerManager {
 
       // Create analyzer if requested
       String analyzerName = descriptor.getAnalyzer();
-      if (analyzerName != null && !analyzerName.isEmpty()) {
-        try {
-          Analyzer analyzer = analyzerFactory.createAnalyzer(analyzerName);
-          fieldAnalyzerMap.put(fieldName, analyzer);
-        } catch (IllegalStateException e) {
-          log.error("Failed to create analyzer for field '{}': {}", fieldName, analyzerName, e);
-        }
+
+      try {
+        Analyzer analyzer = analyzerFactory.createAnalyzer(analyzerName);
+        fieldAnalyzerMap.put(fieldName, analyzer);
+      } catch (IllegalStateException e) {
+        log.error("Failed to create analyzer for field '{}': {}", fieldName, analyzerName, e);
       }
 
       // Track expandable fields
@@ -115,4 +119,54 @@ public class AnalyzerManager {
   public synchronized PerFieldAnalyzerWrapper getPerFieldAnalyzerWrapper() {
     return perFieldAnalyzerWrapper;
   }
+
+  /**
+   * Analyzes the given text using the same analyzer configuration as the index/search
+   * for the specified field.
+   *
+   * @param fieldName the field name (e.g. "content")
+   * @param text the text to analyze
+   * @return list of token strings produced by the analyzer
+   */
+  public List<String> analyze(String fieldName, String text) {
+    if (text == null || text.isEmpty()) {
+      return List.of();
+    }
+
+    PerFieldAnalyzerWrapper wrapper = perFieldAnalyzerWrapper;
+    if (wrapper == null) {
+      log.warn("Per-field analyzer wrapper is not initialized; returning empty token list");
+      return List.of();
+    }
+
+    Analyzer analyzer;
+    try {
+      // Use wrapper.tokenStream() - it internally resolves the analyzer for the field
+      analyzer = fieldAnalyzerMap.getOrDefault(fieldName, defaultAnalyzer);
+    } catch (Exception e) {
+      // Fallback to default if wrapper.getAnalyzer() fails
+      analyzer = defaultAnalyzer;
+    }
+
+    if (analyzer == null) {
+      log.warn("No analyzer found for field {}, using default", fieldName);
+      analyzer = defaultAnalyzer;
+    }
+
+    List<String> tokens = new ArrayList<>();
+
+    try (TokenStream ts = analyzer.tokenStream(fieldName, text)) {
+      CharTermAttribute termAttr = ts.addAttribute(CharTermAttribute.class);
+      ts.reset();
+      while (ts.incrementToken()) {
+        tokens.add(termAttr.toString());
+      }
+      ts.end();
+    } catch (IOException e) {
+      log.warn("Error analyzing text for field {}: {}", fieldName, text, e);
+    }
+
+    return tokens;
+  }
+
 }

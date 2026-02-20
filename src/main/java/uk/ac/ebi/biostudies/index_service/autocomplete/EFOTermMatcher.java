@@ -44,6 +44,9 @@ public class EFOTermMatcher {
   /** Contains all unique terms including alternatives in lowercase. */
   private Set<String> allTermsLowercase;
 
+  /** Precompiled word-boundary patterns for each lowercase term. */
+  private Map<String, Pattern> termPatterns;
+
   public EFOTermMatcher(IndexManager indexManager) {
     this.indexManager = Objects.requireNonNull(indexManager, "indexManager must not be null");
   }
@@ -62,6 +65,14 @@ public class EFOTermMatcher {
       long startTime = System.currentTimeMillis();
 
       loadAllEFOTermsFromIndex();
+
+      // Precompile patterns after all terms are loaded
+      Map<String, Pattern> patterns = new ConcurrentHashMap<>();
+      for (String termLower : allTermsLowercase) {
+        // word-boundary match for the whole term
+        patterns.put(termLower, Pattern.compile("\\b" + Pattern.quote(termLower) + "\\b"));
+      }
+      termPatterns = patterns;
 
       long duration = System.currentTimeMillis() - startTime;
 
@@ -101,11 +112,11 @@ public class EFOTermMatcher {
       StoredFields storedFields = searcher.storedFields();
 
       int maxDoc = reader.maxDoc();
+      Bits liveDocs = MultiBits.getLiveDocs(reader);
 
       log.debug("Found {} documents in EFO index", maxDoc);
 
       for (int docId = 0; docId < maxDoc; docId++) {
-        Bits liveDocs = MultiBits.getLiveDocs(reader);
         if (liveDocs != null && !liveDocs.get(docId)) {
           continue;
         }
@@ -128,16 +139,22 @@ public class EFOTermMatcher {
           }
         }
 
-        String altTerm = doc.get(EFOField.ALTERNATIVE_TERMS.getFieldName());
-        if (altTerm != null) {
-          String altTermLower = altTerm.toLowerCase();
-          allTermsLowercase.add(altTermLower);
-
-          if (efoId != null) {
-            termToIdCache.putIfAbsent(altTermLower, efoId);
+        String[] altTerms = doc.getValues(EFOField.ALTERNATIVE_TERMS.getFieldName());
+        if (altTerms != null && altTerms.length > 0) {
+          for (String altTerm : altTerms) {
+            if (altTerm == null || altTerm.isEmpty()) {
+              continue;
+            }
+            String altTermLower = altTerm.toLowerCase();
+            allTermsLowercase.add(altTermLower);
+            if (efoId != null) {
+              termToIdCache.putIfAbsent(altTermLower, efoId);
+            } else {
+              // If this ever happens, it indicates data inconsistency; log at debug to avoid noise
+              log.debug("Alternative term without EFO ID: '{}'", altTerm);
+            }
+            altTermCount++;
           }
-
-          altTermCount++;
         }
 
         if ((docId + 1) % LOG_PROGRESS_INTERVAL == 0) {
@@ -199,28 +216,32 @@ public class EFOTermMatcher {
   private List<String> computeAncestorsWithMemoization(
       String efoId, Map<String, List<String>> nodeParents, Map<String, List<String>> cache) {
 
-    if (cache.containsKey(efoId)) {
-      return new ArrayList<>(cache.get(efoId));
+    List<String> cached = cache.get(efoId);
+    if (cached != null) {
+      return cached;
     }
 
-    List<String> ancestors = new ArrayList<>();
     List<String> parents = nodeParents.get(efoId);
-
     if (parents == null || parents.isEmpty()) {
-      cache.put(efoId, ancestors);
-      return ancestors;
+      cache.put(efoId, Collections.emptyList());
+      return Collections.emptyList();
     }
 
     String parentId = parents.get(0);
     String parentTerm = idToTermCache.get(parentId);
-
-    if (parentTerm != null) {
-      List<String> parentAncestors = computeAncestorsWithMemoization(parentId, nodeParents, cache);
-      ancestors.addAll(parentAncestors);
-      ancestors.add(parentTerm);
+    if (parentTerm == null) {
+      cache.put(efoId, Collections.emptyList());
+      return Collections.emptyList();
     }
 
-    cache.put(efoId, new ArrayList<>(ancestors));
+    List<String> parentAncestors =
+        computeAncestorsWithMemoization(parentId, nodeParents, cache);
+
+    List<String> ancestors = new ArrayList<>(parentAncestors.size() + 1);
+    ancestors.addAll(parentAncestors);
+    ancestors.add(parentTerm);
+
+    cache.put(efoId, ancestors);
     return ancestors;
   }
 
@@ -237,6 +258,9 @@ public class EFOTermMatcher {
     if (content == null || content.isEmpty()) {
       return Collections.emptyList();
     }
+    if (allTermsLowercase == null || termPatterns == null) {
+      throw new IllegalStateException("EFOTermMatcher has not been initialized");
+    }
 
     String contentLower = content.toLowerCase();
 
@@ -244,9 +268,11 @@ public class EFOTermMatcher {
     List<TermMatch> allMatches = new ArrayList<>();
 
     for (String termLower : allTermsLowercase) {
-      Pattern pattern = Pattern.compile("\\b" + Pattern.quote(termLower) + "\\b");
+      Pattern pattern = termPatterns.get(termLower);
+      if (pattern == null) {
+        continue;
+      }
       Matcher matcher = pattern.matcher(contentLower);
-
       while (matcher.find()) {
         allMatches.add(new TermMatch(termLower, matcher.start(), matcher.end()));
       }
@@ -261,8 +287,13 @@ public class EFOTermMatcher {
     // Select non-overlapping matches (greedy, prefer longer)
     List<TermMatch> selectedMatches = new ArrayList<>();
     for (TermMatch match : allMatches) {
-      boolean overlaps = selectedMatches.stream().anyMatch(m -> match.overlaps(m));
-
+      boolean overlaps = false;
+      for (TermMatch m : selectedMatches) {
+        if (match.overlaps(m)) {
+          overlaps = true;
+          break;
+        }
+      }
       if (!overlaps) {
         selectedMatches.add(match);
       }
@@ -294,7 +325,7 @@ public class EFOTermMatcher {
    *     no ancestors or is not found
    */
   public List<String> getAncestors(String term) {
-    if (term == null) {
+    if (term == null || termToAncestorsCache == null) {
       return Collections.emptyList();
     }
     return termToAncestorsCache.getOrDefault(term.toLowerCase(), Collections.emptyList());
@@ -307,7 +338,9 @@ public class EFOTermMatcher {
    * @return the EFO ID (URI), or null if term not found
    */
   public String getEFOId(String term) {
-    return term != null ? termToIdCache.get(term.toLowerCase()) : null;
+    return term != null && termToIdCache != null
+        ? termToIdCache.get(term.toLowerCase())
+        : null;
   }
 
   /**
@@ -317,7 +350,7 @@ public class EFOTermMatcher {
    * @return the primary term in original case, or null if ID not found
    */
   public String getTerm(String efoId) {
-    return efoId != null ? idToTermCache.get(efoId) : null;
+    return efoId != null && idToTermCache != null ? idToTermCache.get(efoId) : null;
   }
 
   /**
@@ -327,7 +360,9 @@ public class EFOTermMatcher {
    * @return true if term exists as primary or alternative term
    */
   public boolean isEFOTerm(String term) {
-    return term != null && allTermsLowercase.contains(term.toLowerCase());
+    return term != null
+        && allTermsLowercase != null
+        && allTermsLowercase.contains(term.toLowerCase());
   }
 
   /**
@@ -336,6 +371,9 @@ public class EFOTermMatcher {
    * @return unmodifiable set of all lowercase terms
    */
   public Set<String> getAllTerms() {
+    if (allTermsLowercase == null) {
+      return Collections.emptySet();
+    }
     return Collections.unmodifiableSet(allTermsLowercase);
   }
 
@@ -345,9 +383,11 @@ public class EFOTermMatcher {
    * @return formatted string with cache sizes
    */
   public String getCacheStats() {
-    return String.format(
-        "EFOTermMatcher[terms=%d, withHierarchy=%d, nodes=%d]",
-        allTermsLowercase.size(), termToAncestorsCache.size(), idToTermCache.size());
+    int terms = allTermsLowercase != null ? allTermsLowercase.size() : 0;
+    int withHierarchy = termToAncestorsCache != null ? termToAncestorsCache.size() : 0;
+    int nodes = idToTermCache != null ? idToTermCache.size() : 0;
+    return String.format("EFOTermMatcher[terms=%d, withHierarchy=%d, nodes=%d]",
+        terms, withHierarchy, nodes);
   }
 
   /** Represents a matched term with its span in the content. */
