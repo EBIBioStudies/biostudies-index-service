@@ -81,12 +81,13 @@ public class AnalyzerManager {
 
       // Create analyzer if requested
       String analyzerName = descriptor.getAnalyzer();
-
-      try {
-        Analyzer analyzer = analyzerFactory.createAnalyzer(analyzerName);
-        fieldAnalyzerMap.put(fieldName, analyzer);
-      } catch (IllegalStateException e) {
-        log.error("Failed to create analyzer for field '{}': {}", fieldName, analyzerName, e);
+      if (analyzerName != null && !analyzerName.isEmpty()) {
+        try {
+          Analyzer analyzer = analyzerFactory.createAnalyzer(analyzerName);
+          fieldAnalyzerMap.put(fieldName, analyzer);
+        } catch (IllegalStateException e) {
+          log.error("Failed to create analyzer for field '{}': {}", fieldName, analyzerName, e);
+        }
       }
 
       // Track expandable fields
@@ -121,8 +122,8 @@ public class AnalyzerManager {
   }
 
   /**
-   * Analyzes the given text using the same analyzer configuration as the index/search
-   * for the specified field.
+   * Analyzes the given text using the same analyzer configuration as the index/search for the
+   * specified field.
    *
    * @param fieldName the field name (e.g. "content")
    * @param text the text to analyze
@@ -168,5 +169,4 @@ public class AnalyzerManager {
 
     return tokens;
   }
-
 }

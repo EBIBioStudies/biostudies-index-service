@@ -22,6 +22,7 @@ import org.springframework.stereotype.Component;
 import uk.ac.ebi.biostudies.index_service.Constants;
 import uk.ac.ebi.biostudies.index_service.model.ExtendedSubmissionMetadata;
 import uk.ac.ebi.biostudies.index_service.model.FileDocumentField;
+import uk.ac.ebi.biostudies.index_service.registry.model.SubmissionField;
 
 /**
  * Orchestrates file indexing for BioStudies submissions. Processes direct files and FileLists,
@@ -114,7 +115,9 @@ public class FilesIndexer {
     if (!context.getSectionsWithFiles().isEmpty()) {
       context
           .getValueMap()
-          .put(Constants.SECTIONS_WITH_FILES, String.join(" ", context.getSectionsWithFiles()));
+          .put(
+              SubmissionField.SECTIONS_WITH_FILES.getName(),
+              String.join(" ", context.getSectionsWithFiles()));
     }
 
     context.getValueMap().put(Constants.FILES, context.getFileCounter().longValue());
@@ -123,7 +126,7 @@ public class FilesIndexer {
         .put(Constants.FILE_ATT_KEY_VALUE, String.join(" ", context.getSearchableFileMetadata()));
 
     if (context.getHasIndexingError().get()) {
-      context.getValueMap().put(Constants.HAS_FILE_PARSING_ERROR, "true");
+      context.getValueMap().put(SubmissionField.HAS_FILE_PARSING_ERROR.getName(), "true");
     }
   }
 

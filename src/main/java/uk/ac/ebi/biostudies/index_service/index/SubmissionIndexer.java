@@ -12,6 +12,7 @@ import org.apache.lucene.queryparser.classic.ParseException;
 import org.springframework.stereotype.Component;
 import uk.ac.ebi.biostudies.index_service.Constants;
 import uk.ac.ebi.biostudies.index_service.model.ExtendedSubmissionMetadata;
+import uk.ac.ebi.biostudies.index_service.registry.model.SubmissionField;
 
 /**
  * High-level entry point for indexing a BioStudies submission.
@@ -117,7 +118,7 @@ public class SubmissionIndexer {
         log.warn("Failed to append file attributes to content");
       }
 
-      valueMap.put(Constants.FILE_ATTRIBUTE_NAMES, columnSet);
+      valueMap.put(SubmissionField.FILE_ATTRIBUTE_NAMES.getName(), columnSet);
       Document indexedDocument = submissionDocumentCreator.createSubmissionDocument(valueMap);
 
       indexingTransactionManager.updateSubmissionDocument(indexedDocument, accNo);

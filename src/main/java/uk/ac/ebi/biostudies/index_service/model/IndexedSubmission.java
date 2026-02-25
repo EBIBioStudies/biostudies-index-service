@@ -1,5 +1,6 @@
 package uk.ac.ebi.biostudies.index_service.model;
 
+import java.util.List;
 import lombok.Data;
 
 /**
@@ -35,15 +36,18 @@ public class IndexedSubmission {
   /** Relative path to the submission root within the storage system. */
   private String relPath;
 
-  /** Absolute or logical root path of the submission in storage. */
-  private String rootPath;
-
   /** Indicates whether the submission has been released to users. */
   private boolean released;
 
-  /** Secret key used to access unreleased submissions. */
-  //private String secretKey;
-
   /** Storage backend or mode used for this submission (e.g. NFS, FIRE, S3). */
   private String storageMode;
+
+  private long numberOfFiles;
+  private long numberOfLinks;
+
+  private List<String> sectionsWithFiles;
+  private List<String> fileAttributesNames;
+  private boolean hasFileIndexingError;
+  private long releaseTime;
+  private long modificationTime;
 }

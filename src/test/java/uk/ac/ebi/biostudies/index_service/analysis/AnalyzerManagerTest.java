@@ -102,4 +102,19 @@ class AnalyzerManagerTest {
     Set<String> set = analyzerManager.getExpandableFieldNames();
     assertThrows(UnsupportedOperationException.class, () -> set.add("newField"));
   }
+
+  @Test
+  void testDefaultAnalyzerIsUsedIfNullOrEmpty() {
+    PropertyDescriptor noAnalyzer = Mockito.mock(PropertyDescriptor.class);
+    when(noAnalyzer.isFacet()).thenReturn(false);
+    when(noAnalyzer.getAnalyzer()).thenReturn(null);
+
+    CollectionRegistry collectionRegistry = Mockito.mock(CollectionRegistry.class);
+    when(collectionRegistry.getGlobalPropertyRegistry()).thenReturn(Map.of("noAnalyzer", noAnalyzer));
+
+    analyzerManager.init(collectionRegistry);
+
+    PerFieldAnalyzerWrapper wrapper = analyzerManager.getPerFieldAnalyzerWrapper();
+    assertNotNull(wrapper);
+  }
 }

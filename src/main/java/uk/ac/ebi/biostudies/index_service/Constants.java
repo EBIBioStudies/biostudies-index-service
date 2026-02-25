@@ -53,13 +53,10 @@ public final class Constants {
 
   public static final String ATTRIBUTE_NAME = "name";
   public static final String ATTRIBUTE_VALUE = "value";
-
-  public static final String SECTIONS_WITH_FILES = "sections_with_files";
+  
   public static final String FILE_ATT_KEY_VALUE = "fileAttKeyValue";
-  public static final String FILE_ATTRIBUTE_NAMES  = "file_attribute_names";
 
   public static final String FILES = "files";
-  public static final String HAS_FILE_PARSING_ERROR = "parsingError";
 
   public static final String CONTENT = "content";
 

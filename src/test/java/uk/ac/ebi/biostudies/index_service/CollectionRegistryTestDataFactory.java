@@ -5,7 +5,6 @@ import uk.ac.ebi.biostudies.index_service.registry.dto.PropertyDescriptorDto;
 import uk.ac.ebi.biostudies.index_service.registry.model.CollectionDescriptor;
 import uk.ac.ebi.biostudies.index_service.registry.model.CollectionRegistry;
 import uk.ac.ebi.biostudies.index_service.registry.model.FieldType;
-import uk.ac.ebi.biostudies.index_service.registry.model.PropertyDescriptor;
 
 public class CollectionRegistryTestDataFactory {
   public static CollectionRegistry createValidRegistry() {

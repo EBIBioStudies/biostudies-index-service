@@ -28,6 +28,7 @@ import uk.ac.ebi.biostudies.index_service.autocomplete.EFOTermMatcher;
 import uk.ac.ebi.biostudies.index_service.registry.model.FieldName;
 import uk.ac.ebi.biostudies.index_service.registry.model.LuceneFieldTypes;
 import uk.ac.ebi.biostudies.index_service.registry.model.PropertyDescriptor;
+import uk.ac.ebi.biostudies.index_service.registry.model.SubmissionField;
 import uk.ac.ebi.biostudies.index_service.registry.service.CollectionRegistryService;
 
 /**
@@ -110,11 +111,12 @@ public class SubmissionDocumentCreator {
     Document doc = new Document();
 
     // Add special submission-level fields
-    addFileAttributes(doc, (Set<String>) valueMap.get(Constants.FILE_ATTRIBUTE_NAMES));
-    if (valueMap.get(Constants.HAS_FILE_PARSING_ERROR) != null) {
-      doc.add(new TextField(Constants.HAS_FILE_PARSING_ERROR, "true", Field.Store.YES));
+    addFileAttributes(
+        doc, (Set<String>) valueMap.get(SubmissionField.FILE_ATTRIBUTE_NAMES.getName()));
+    if (valueMap.get(SubmissionField.HAS_FILE_PARSING_ERROR.getName()) != null) {
+      doc.add(
+          new TextField(SubmissionField.HAS_FILE_PARSING_ERROR.getName(), "true", Field.Store.YES));
     }
-
     // Process public and collection-specific properties
     List<PropertyDescriptor> relatedProperties =
         collectionRegistryService.getPublicAndCollectionRelatedProperties(collection.toLowerCase());
@@ -170,6 +172,7 @@ public class SubmissionDocumentCreator {
 
         case UNTOKENIZED_STRING:
           if (!valueMap.containsKey(fieldName)) break;
+          if (valueMap.get(fieldName) == null) break;
           String untokenizedValue = String.valueOf(valueMap.get(fieldName));
           Field field =
               new Field(fieldName, untokenizedValue, LuceneFieldTypes.NOT_ANALYZED_STORED);
@@ -219,7 +222,9 @@ public class SubmissionDocumentCreator {
     StringBuilder allAtts = new StringBuilder("Name|Size|");
     if (columnAtts == null) columnAtts = new HashSet<>();
     for (String att : columnAtts) allAtts.append(att).append("|");
-    doc.add(new StringField(Constants.FILE_ATTRIBUTE_NAMES, allAtts.toString(), Field.Store.YES));
+    doc.add(
+        new StringField(
+            SubmissionField.FILE_ATTRIBUTE_NAMES.getName(), allAtts.toString(), Field.Store.YES));
   }
 
   /**

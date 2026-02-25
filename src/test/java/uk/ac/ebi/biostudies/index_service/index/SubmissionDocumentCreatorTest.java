@@ -96,7 +96,7 @@ class SubmissionDocumentCreatorTest {
   void createSubmissionDocument_fileParsingError_addsErrorField() throws IOException {
     // GIVEN
     valueMap.put(FieldName.FACET_COLLECTION.getName(), "testCollection");
-    valueMap.put(Constants.HAS_FILE_PARSING_ERROR, true);
+    valueMap.put(SubmissionField.HAS_FILE_PARSING_ERROR.getName(), true);
     valueMap.put(Constants.CONTENT, "test content");
 
     when(collectionRegistryService.getPublicAndCollectionRelatedProperties("testcollection"))
@@ -114,7 +114,7 @@ class SubmissionDocumentCreatorTest {
 
     // THEN
     assertThat(result).isNotNull();
-    IndexableField errorField = result.getField(Constants.HAS_FILE_PARSING_ERROR);
+    IndexableField errorField = result.getField(SubmissionField.HAS_FILE_PARSING_ERROR.getName());
     assertThat(errorField).isNotNull();
     assertThat(errorField.stringValue()).isEqualTo("true");
   }
@@ -292,7 +292,7 @@ class SubmissionDocumentCreatorTest {
 
     creator.addFileAttributes(doc, null);
 
-    StringField field = (StringField) doc.getField(Constants.FILE_ATTRIBUTE_NAMES);
+    StringField field = (StringField) doc.getField(SubmissionField.FILE_ATTRIBUTE_NAMES.getName());
     assertThat(field.stringValue()).isEqualTo("Name|Size|");
   }
 
@@ -305,7 +305,7 @@ class SubmissionDocumentCreatorTest {
 
     creator.addFileAttributes(doc, columns);
 
-    StringField field = (StringField) doc.getField(Constants.FILE_ATTRIBUTE_NAMES);
+    StringField field = (StringField) doc.getField(SubmissionField.FILE_ATTRIBUTE_NAMES.getName());
     String value = field.stringValue();
 
     // Check that it starts with "Name|Size|" and contains both columns

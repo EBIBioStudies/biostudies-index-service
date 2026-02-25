@@ -32,7 +32,7 @@ public enum SubmissionField {
   /** Modification time */
   MODIFICATION_TIME("mtime"),
 
-  /** Facet link type */
+  /** Release time */
   RELEASE_TIME("rtime"),
 
   /** secret key */
@@ -56,20 +56,19 @@ public enum SubmissionField {
   /** Is the submission public (already released)? */
   IS_PUBLIC("isPublic"),
 
+  SECTIONS_WITH_FILES("sections_with_files"),
+  FILE_ATTRIBUTE_NAMES("file_attribute_names"),
+
+  REL_PATH("relPath"),
+
   /** Collection membership */
-  COLLECTION("collection");
+  COLLECTION("collection"),
+  HAS_FILE_PARSING_ERROR("has_file_parsing_error");
 
   private final String name;
 
   SubmissionField(String name) {
     this.name = name;
-  }
-
-  /**
-   * Returns the string representation used in the collection registry and Lucene index.
-   */
-  public String getName() {
-    return name;
   }
 
   /**
@@ -87,19 +86,22 @@ public enum SubmissionField {
     return null;
   }
 
-  @Override
-  public String toString() {
-    return name;
-  }
-
   /**
    * Returns all allowed field names as a set.
    *
    * @return set of field name strings
    */
   public static Set<String> getAllSubmissionFieldNames() {
-    return Arrays.stream(values())
-        .map(SubmissionField::getName)
-        .collect(Collectors.toSet());
+    return Arrays.stream(values()).map(SubmissionField::getName).collect(Collectors.toSet());
+  }
+
+  /** Returns the string representation used in the collection registry and Lucene index. */
+  public String getName() {
+    return name;
+  }
+
+  @Override
+  public String toString() {
+    return name;
   }
 }
