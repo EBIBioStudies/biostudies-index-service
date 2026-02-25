@@ -14,9 +14,8 @@ import uk.ac.ebi.biostudies.index_service.search.SearchRequest;
 public class QueryPreprocessor {
 
   private static final String RELEVANCE = "relevance";
-  private static final String RELEASE_DATE = "releaseDate";
+  private static final String RELEASE_DATE = "release_date";
   private static final String DESCENDING = "descending";
-  private static final String ASCENDING = "ascending";
 
   private static final int DEFAULT_PAGE = 1;
   private static final int DEFAULT_PAGE_SIZE = 20;

@@ -6,11 +6,14 @@ import org.apache.lucene.facet.DrillDownQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.SortedNumericSortField;
 import org.springframework.stereotype.Service;
 import uk.ac.ebi.biostudies.index_service.TaxonomyManager;
 import uk.ac.ebi.biostudies.index_service.exceptions.SearchException;
 import uk.ac.ebi.biostudies.index_service.registry.model.CollectionRegistry;
+import uk.ac.ebi.biostudies.index_service.registry.model.FieldType;
 import uk.ac.ebi.biostudies.index_service.registry.model.PropertyDescriptor;
+import uk.ac.ebi.biostudies.index_service.registry.model.SubmissionField;
 import uk.ac.ebi.biostudies.index_service.registry.service.CollectionRegistryService;
 import uk.ac.ebi.biostudies.index_service.search.engine.LuceneQueryExecutor;
 import uk.ac.ebi.biostudies.index_service.search.engine.PaginatedResult;
@@ -242,19 +245,20 @@ public class SearchService {
    * @return Lucene Sort object, or null for pure relevance sorting
    */
   private Sort buildSort(String sortBy, String sortOrder) {
-    // Relevance sorting: return null to use Lucene's default score-based sorting
-    if (sortBy == null || RELEVANCE.equalsIgnoreCase(sortBy)) {
-      return null;
+    if (sortBy == null || RELEVANCE.equalsIgnoreCase(sortBy)) return null;
+
+    boolean reverse = "descending".equalsIgnoreCase(sortOrder);
+    SortField primary = createSortField(sortBy, reverse);
+
+    SortField secondary = SortField.FIELD_SCORE;  // Tie-breaker
+
+    // RIBS: release_date composite with mtime
+    if ("releasedate".equalsIgnoreCase(sortBy) || "release_date".equalsIgnoreCase(sortBy)) {
+      SortField mtime = createSortField("modificationtime", reverse);
+      return new Sort(primary, mtime, secondary);
     }
 
-    // Determine sort direction (descending = reverse in Lucene terms)
-    boolean reverse = "descending".equalsIgnoreCase(sortOrder);
-
-    // Create primary sort field
-    SortField sortField = createSortField(sortBy, reverse);
-
-    // Add relevance as secondary sort for consistent tie-breaking
-    return new Sort(sortField, SortField.FIELD_SCORE);
+    return new Sort(primary, secondary);
   }
 
   /**
@@ -276,28 +280,55 @@ public class SearchService {
    * @return configured SortField with appropriate type and direction
    */
   private SortField createSortField(String fieldName, boolean reverse) {
-    return switch (fieldName.toLowerCase()) {
-      // Date fields: stored as long epoch milliseconds with DocValues
-      case "releasedate", "release_date" ->
-          new SortField("releaseDate", SortField.Type.LONG, reverse);
-      case "modificationdate", "modification_date", "modificationtime" ->
-          new SortField("modificationDate", SortField.Type.LONG, reverse);
+    if (RELEVANCE.equalsIgnoreCase(fieldName)) {
+      return new SortField(null, SortField.Type.SCORE, reverse);
+    }
 
-      // String fields: use sortable versions with SortedDocValues
-      case "accession", "accno" -> new SortField("accession", SortField.Type.STRING, reverse);
-      case "title" ->
-          new SortField("title.sort", SortField.Type.STRING, reverse); // Keyword field for sorting
+    // RIBS: Dynamic type detection from registry
+    SortField.Type type = extractFieldType(fieldName);
 
-      // Numeric fields: use appropriate numeric type
-      case "filecount", "file_count" -> new SortField("fileCount", SortField.Type.INT, reverse);
+    String actualField = mapUserFieldToIndexed(fieldName);  // e.g. "release_date" → "rtime"
 
-      // Unknown field: attempt STRING sort with warning
-      default -> {
-        log.warn("Unknown sort field '{}', attempting STRING sort", fieldName);
-        yield new SortField(fieldName, SortField.Type.STRING, reverse);
-      }
+    // RIBS: SortedNumericSortField for LONG (handles arrays!)
+    if (type == SortField.Type.LONG) {
+      return new SortedNumericSortField(actualField, type, reverse);
+    }
+    return new SortField(actualField, type, reverse);
+  }
+
+  /**
+   * Maps UI field names to indexed fields (RIBS behavior).
+   */
+  private String mapUserFieldToIndexed(String userField) {
+    return switch (userField.toLowerCase()) {
+      case "releasedate", "release_date" -> SubmissionField.RELEASE_TIME.getName();  // "rtime"
+      case "modificationdate" -> SubmissionField.MODIFICATION_TIME.getName();       // "mtime"
+      case "views" -> SubmissionField.VIEWS.getName();
+      case "files" -> SubmissionField.FILES.getName();
+      case "links" -> SubmissionField.LINKS.getName();
+      default -> userField.toLowerCase();
     };
   }
+
+  /**
+   * Maps original RIBS logic: extractFieldType from registry.
+   * CRITICAL: Use ACTUAL indexed field name for lookup!
+   */
+  private SortField.Type extractFieldType(String userSortBy) {
+    String indexedField = mapUserFieldToIndexed(userSortBy);  // "release_date" → "rtime"
+    PropertyDescriptor desc = collectionRegistryService.getPropertyDescriptor(indexedField);
+
+    if (desc == null) {
+      log.warn("No descriptor for indexed field '{}', defaulting STRING", indexedField);
+      return SortField.Type.STRING;
+    }
+
+    // RIBS hack → replace with enum check
+    FieldType type = desc.getFieldType();
+    return type.isNumericType() ? SortField.Type.LONG : SortField.Type.STRING;
+  }
+
+
 
   /**
    * Converts facet dimension names to validated PropertyDescriptors.

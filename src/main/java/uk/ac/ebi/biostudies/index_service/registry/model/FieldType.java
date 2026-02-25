@@ -59,6 +59,10 @@ public enum FieldType {
     return null;
   }
 
+  public boolean isNumericType() {
+    return this == LONG;  // Add SHORT, BYTE if needed
+  }
+
   @Override
   public String toString() {
     return name;

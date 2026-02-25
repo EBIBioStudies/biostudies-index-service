@@ -45,13 +45,20 @@ import uk.ac.ebi.biostudies.index_service.model.ExtendedSubmissionMetadata;
 @Service
 public class IndexingService {
 
+  /** Active indexing tasks with 1h TTL. */
   private final ConcurrentHashMap<String, TaskStatus> tasks = new ConcurrentHashMap<>();
+
+  /** Schedules expired task cleanup. */
   private final ScheduledExecutorService cleanupScheduler = Executors.newScheduledThreadPool(1);
+
   private final ObjectProvider<WebSocketConnectionService> webSocketProvider;
   private final SubmissionIndexer submissionIndexer;
   private final IndexingTransactionManager indexingTransactionManager;
   private final PaginatedExtSubmissionHttpClient paginatedClient;
+
+  /** Tracks concurrent indexing operations. */
   private final AtomicInteger activeTasks = new AtomicInteger(0);
+
   private ThreadPoolExecutor threadPoolExecutor;
 
   @Value("${indexer.thread-count:8}")
@@ -109,18 +116,13 @@ public class IndexingService {
   }
 
   /**
-   * Manages asynchronous indexing of BioStudies submissions using bounded thread pool executor.
+   * Queues submission for async indexing with configurable options.
    *
-   * <p>Supports both individual submissions and large-scale batch/streaming indexing.
-   *
-   * <p>Features:
-   *
-   * <ul>
-   *   <li>{@code threadCount} daemon threads with {@code queueCapacity} backpressure
-   *   <li>Real-time task tracking via {@link ConcurrentHashMap} with 1h auto-expiry
-   *   <li>WebSocket health checks before queuing
-   *   <li>REST endpoints for status monitoring
-   * </ul>
+   * @param accNo accession number (e.g. "S-BSST123")
+   * @param removeFileDocuments if true, removes stale file documents during indexing
+   * @param commit if true, commits transaction after indexing (false for batching)
+   * @return immediate tracking info with queue position and status URL
+   * @throws ServiceUnavailableException if WebSocket unhealthy
    */
   public IndexingInfo queueSubmission(String accNo, boolean removeFileDocuments, boolean commit) {
     if (webSocketProvider.getObject().isClosed()) {
@@ -194,37 +196,16 @@ public class IndexingService {
       String msg = String.format("Indexing failed: %s", e.getMessage());
       log.error("[{}]: {}", accNo, msg, e);
       status.setFailed(msg);
-      // indexingTransactionManager.rollback();  // Enable if per-task rollback needed
     }
   }
 
-  //  /** Async indexes batch with single commit at end. Uses existing thread pool. */
-  //  public IndexingInfo indexBatchAsync(List<String> accNos, boolean removeFileDocuments) {
-  //    String batchId = UUID.randomUUID().toString();
-  //    TaskStatus batchStatus = new TaskStatus("batch-" + batchId);
-  //    tasks.put(batchId, batchStatus);
-  //
-  //    activeTasks.incrementAndGet();
-  //    threadPoolExecutor.submit(
-  //        () -> {
-  //          try {
-  //            List<ExtendedSubmissionMetadata> submissions = new ArrayList<>();
-  //            for (ExtendedSubmissionMetadata metadata : submissions) {
-  //              submissionIndexer.indexWithoutCommit(metadata, removeFileDocuments);
-  //            }
-  //            indexingTransactionManager.commit(); // SINGLE COMMIT
-  //            batchStatus.setCompleted();
-  //          } catch (Exception e) {
-  //            batchStatus.setFailed(e.getMessage());
-  //          } finally {
-  //            activeTasks.decrementAndGet();
-  //          }
-  //        });
-  //
-  //    return new IndexingInfo(
-  //        batchId, 1, batchStatus.getTaskId(), "/batches/" + batchId + "/status");
-  //  }
-
+  /**
+   * Queues paginated stream indexing for large collections.
+   *
+   * @param filters submission filters (collection, release date, etc.)
+   * @param pageSize batch size for streaming (default ~100)
+   * @return stream tracking info
+   */
   public IndexingInfo queueStream(ExtSubmissionFilters filters, int pageSize) {
     String streamTaskId = UUID.randomUUID().toString();
     TaskStatus streamStatus = new TaskStatus("stream-" + streamTaskId);
@@ -268,7 +249,7 @@ public class IndexingService {
   /**
    * Returns task status or NOT_FOUND stub if expired.
    *
-   * @param accNo submission accession
+   * @param accNo submission accession or stream ID
    * @return current {@link TaskStatus} or NOT_FOUND stub
    */
   public TaskStatus getStatus(String accNo) {
@@ -320,6 +301,32 @@ public class IndexingService {
     }
     indexingTransactionManager.commit();
     log.info("Indexing shutdown complete");
+  }
+
+  /**
+   * Synchronously deletes submission from index.
+   *
+   * @param accNo submission accession (e.g. "S-BSST123")
+   * @return deletion result with success status and timing
+   * @throws ServiceUnavailableException if WebSocket unhealthy
+   */
+  public void deleteSubmission(String accNo) {
+    if (webSocketProvider.getObject().isClosed()) {
+      throw new ServiceUnavailableException("Websocket connection is closed");
+    }
+
+    long startTime = System.currentTimeMillis();
+
+    try {
+      log.info("[{}]: deleting submission", accNo);
+      submissionIndexer.deleteSubmission(accNo);
+      long duration = System.currentTimeMillis() - startTime;
+      log.info("[{}]: deleted in {}ms", accNo, duration);
+
+    } catch (Exception e) {
+      String msg = String.format("Deletion failed: %s", e.getMessage());
+      log.error("[{}]: {}", accNo, msg, e);
+    }
   }
 
   @PreDestroy

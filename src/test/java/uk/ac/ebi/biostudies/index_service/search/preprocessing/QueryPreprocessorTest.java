@@ -69,7 +69,7 @@ class QueryPreprocessorTest {
 
       SearchRequest result = preprocessor.preprocess(request);
 
-      assertEquals("releaseDate", result.getSortBy());
+      assertEquals("release_date", result.getSortBy());
       assertEquals("descending", result.getSortOrder());
       assertFalse(result.isHighlightingEnabled());
     }

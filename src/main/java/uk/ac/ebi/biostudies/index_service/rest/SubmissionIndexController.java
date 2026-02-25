@@ -226,4 +226,44 @@ public class SubmissionIndexController {
         String.format("Stream %s queued (position: %d)", info.taskId(), info.queuePosition());
     return ResponseEntity.accepted().body(new RestResponse<>(true, message, info, List.of()));
   }
+
+  /**
+   * Deletes a submission from indexes.
+   *
+   * <p>Synchronously removes submission and associated data (files, links) from all indexes.
+   * Returns 204 No Content on success.
+   *
+   * @param accNo submission accession (e.g. "S-BSST1432")
+   * @return {@code 204 No Content} on success, {@code 503} if service unavailable
+   */
+  @Operation(
+      summary = "Delete submission from indexes",
+      description = "Immediately removes submission documents from search indexes.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "204", description = "Submission deleted successfully"),
+    @ApiResponse(
+        responseCode = "400",
+        description = "Invalid accession format",
+        content =
+            @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = RestResponse.class))),
+    @ApiResponse(
+        responseCode = "503",
+        description = "Indexing service unavailable (WebSocket closed)",
+        content =
+            @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = RestResponse.class)))
+  })
+  @DeleteMapping("/{accNo}")
+  public ResponseEntity<Void> deleteIndexSubmission(
+      @Parameter(description = "Submission accession (e.g., S-BSST1432)", example = "S-BSST1432")
+          @PathVariable
+          String accNo) {
+    log.info("DELETE /{}: deleting submission from indexes", accNo);
+    indexingService.deleteSubmission(accNo);
+    log.debug("DELETE /{}: completed successfully", accNo);
+    return ResponseEntity.noContent().build();
+  }
 }
