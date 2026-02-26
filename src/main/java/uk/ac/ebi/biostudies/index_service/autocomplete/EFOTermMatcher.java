@@ -149,9 +149,6 @@ public class EFOTermMatcher {
             allTermsLowercase.add(altTermLower);
             if (efoId != null) {
               termToIdCache.putIfAbsent(altTermLower, efoId);
-            } else {
-              // If this ever happens, it indicates data inconsistency; log at debug to avoid noise
-              log.debug("Alternative term without EFO ID: '{}'", altTerm);
             }
             altTermCount++;
           }

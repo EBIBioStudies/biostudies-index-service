@@ -12,19 +12,25 @@ FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 COPY --from=build /app/target/biostudies-index-service-*.jar app.jar
 
+
 # Create a directory for Lucene indices
-RUN mkdir -p /app/indices && chown -R 1000:1000 /app/indices
+RUN mkdir -p /app/data/indices /app/data && \
+    chown -R 1000:1000 /app/data
 
 # Set environment variables
-ENV INDEX_BASE_DIR=/app/indices
+ENV INDEX_BASE_DIR=/app/data/indices
 # Default to dev profile for better logging in local Docker
-ENV SPRING_PROFILES_ACTIVE=dev
+#ENV SPRING_PROFILES_ACTIVE=dev
 
 # Expose the application port
 EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
+  CMD wget -qO- http://localhost:8080/actuator/health || exit 1
 
 # Run as non-root user
 USER 1000:1000
 
 # Use shell form of ENTRYPOINT to allow environment variable expansion
-ENTRYPOINT ["sh", "-c", "java -jar app.jar --index.base-dir=${INDEX_BASE_DIR}"]
+ENTRYPOINT ["sh", "-c", "java -jar app.jar --index.base-dir=${INDEX_BASE_DIR} --efo.owl-filename=/app/data/efo.owl"]

@@ -7,6 +7,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import uk.ac.ebi.biostudies.index_service.exceptions.ServiceUnavailableException;
 import uk.ac.ebi.biostudies.index_service.exceptions.SubmissionNotAccessibleException;
 import uk.ac.ebi.biostudies.index_service.rest.ApiError;
@@ -34,6 +36,14 @@ public class GlobalExceptionHandler {
         new ApiError("SUBMISSION_NOT_ACCESSIBLE", null, ex.getMessage(), HttpStatus.SC_FORBIDDEN);
     return ResponseEntity.status(HttpStatus.SC_FORBIDDEN)
         .body(RestResponse.error("Submission not accessible", List.of(error)));
+  }
+
+  /**
+   * Silently ignores favicon.ico and other missing static resource requests.
+   */
+  @ExceptionHandler(NoResourceFoundException.class)
+  public ResponseEntity<Void> handleNoResourceFound(NoResourceFoundException ex) {
+    return ResponseEntity.notFound().build();
   }
 
   // Catch-all for other exceptions
