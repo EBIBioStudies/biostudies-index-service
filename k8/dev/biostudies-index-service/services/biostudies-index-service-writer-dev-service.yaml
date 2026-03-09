@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: indexer-writer-svc
+  namespace: biostudies-index-service-dev
+spec:
+  selector:
+    app: indexer
+    role: writer
+  ports:
+    - protocol: TCP
+      port: 80              # External port (what other services/users connect to)
+      targetPort: 8080      # Container port (where the app is listening)
+      nodePort: 31300      # External node port (if accessing via NodeIP:31300)
+  type: NodePort
