@@ -1,0 +1,145 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: indexer-writer
+  namespace: biostudies-index-service-dev
+spec:
+  serviceName: indexer-writer
+  replicas: 1
+  selector:
+    matchLabels:
+      app: indexer
+      role: writer
+  template:
+    metadata:
+      labels:
+        app: indexer
+        role: writer
+    spec:
+      securityContext:
+        runAsUser: 1741
+        runAsGroup: 1030
+      containers:
+        - name: indexer
+          image: biostudies/biostudies-index-service:dev
+          imagePullPolicy: Always
+          env:
+            - name: INDEXER_ROLE
+              value: writer
+            - name: QUEUE_CONSUME
+              value: "true"
+            - name: INDEX_BASE_DIR
+              value: /var/data/indexes
+            - name: HTTP_PROXY
+              value: "http://hx-wwwcache.ebi.ac.uk:3128"
+            - name: HTTPS_PROXY
+              value: "http://hx-wwwcache.ebi.ac.uk:3128"
+            - name: http_proxy
+              value: "http://hx-wwwcache.ebi.ac.uk:3128"
+            - name: https_proxy
+              value: "http://hx-wwwcache.ebi.ac.uk:3128"
+            - name: NO_PROXY
+              value: "localhost,127.0.0.1,.cluster.local,.svc,biostudies-beta"
+            - name: no_proxy
+              value: "localhost,127.0.0.1,.cluster.local,.svc,biostudies-beta"
+            - name: JAVA_TOOL_OPTIONS
+              value: >-
+                -Djdk.httpclient.allowHTTP2=false
+                -Djdk.httpclient.keepalive.timeout=0
+                -Djdk.httpclient.HttpClient.log=all
+                -Dhttp.proxyHost=hx-wwwcache.ebi.ac.uk
+                -Dhttp.proxyPort=3128
+                -Dhttps.proxyHost=hx-wwwcache.ebi.ac.uk
+                -Dhttps.proxyPort=3128
+                -Dhttp.nonProxyHosts=localhost|127.0.0.1|*.cluster.local|*.svc|hx-wwwcache.ebi.ac.uk
+          volumeMounts:
+            - name: index-storage
+              mountPath: /var/data/indexes
+            - name: efo-volume
+              mountPath: /app/data
+            - name: security-config
+              mountPath: /app/config
+              readOnly: true
+        - name: efo-sidecar
+          image: alpine:3.19
+          securityContext:
+            runAsUser: 0
+          env:
+            - name: HTTP_PROXY
+              value: "http://hx-wwwcache.ebi.ac.uk:3128"
+            - name: HTTPS_PROXY
+              value: "http://hx-wwwcache.ebi.ac.uk:3128"
+            - name: http_proxy
+              value: "http://hx-wwwcache.ebi.ac.uk:3128"
+            - name: https_proxy
+              value: "http://hx-wwwcache.ebi.ac.uk:3128"
+            - name: NO_PROXY
+              value: "localhost,127.0.0.1,.cluster.local,.svc"
+            - name: no_proxy
+              value: "localhost,127.0.0.1,.cluster.local,.svc"
+          command: ["/bin/sh"]
+          args:
+            - -c
+            - |
+              set -e
+              apk add --no-cache wget
+              if [ ! -f /app/data/efo.owl ]; then
+                echo "efo.owl not found, downloading..."
+                wget -O /app/data/efo.owl "https://www.ebi.ac.uk/efo/efo.owl"
+              else
+                echo "efo.owl already present, skipping download"
+              fi
+              tail -f /dev/null
+          volumeMounts:
+            - name: efo-volume
+              mountPath: /app/data
+        - name: snapshot-sidecar
+          image: biostudies/rsync-sidecar:alpine-3.19
+          securityContext:
+            runAsUser: 0
+          env:
+            - name: SNAPSHOT_INTERVAL_SECONDS
+              value: "3600"
+            - name: SNAPSHOT_BASE
+              value: "/nfs/indexes/snapshots"
+          command: ["/bin/bash"]
+          args:
+            - -c
+            - |
+              set -e
+              interval="${SNAPSHOT_INTERVAL_SECONDS:-3600}"
+              snapshot_base="${SNAPSHOT_BASE:-/nfs/indexes/snapshots}"
+              mkdir -p "$snapshot_base"
+              echo "snapshot-sidecar: starting rsync loop from /var/data/indexes to $snapshot_base"
+              while true; do
+                ts=$(date +%Y%m%d-%H%M%S)
+                target="$snapshot_base/$ts"
+                mkdir -p "$target"
+                echo "snapshot-sidecar: rsync to $target"
+                rsync -a --delete /var/data/indexes/ "$target"/
+                echo "snapshot-sidecar: snapshot $ts completed, sleeping $interval seconds"
+                sleep "$interval"
+              done
+          volumeMounts:
+            - name: index-storage
+              mountPath: /var/data/indexes
+            - name: shared-indexes
+              mountPath: /nfs/indexes
+      volumes:
+        - name: efo-volume
+          emptyDir: {}
+        - name: shared-indexes
+          persistentVolumeClaim:
+            claimName: shared-indexes-pvc
+        - name: security-config
+          secret:
+            secretName: indexer-security-config
+  volumeClaimTemplates:
+    - metadata:
+        name: index-storage
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: local-storage
+        resources:
+          requests:
+            storage: 100Gi

@@ -1,0 +1,124 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: indexer-reader
+  namespace: biostudies-index-service-dev
+spec:
+  serviceName: indexer-reader
+  replicas: 1
+  selector:
+    matchLabels:
+      app: indexer
+      role: reader
+  template:
+    metadata:
+      labels:
+        app: indexer
+        role: reader
+    spec:
+      securityContext:
+        runAsUser: 1741
+        runAsGroup: 1030
+      initContainers:
+        - name: index-symlink
+          image: alpine:3.19
+          securityContext:
+            runAsUser: 0
+          command: ["/bin/sh"]
+          args:
+            - -c
+            - |
+              set -e
+              cd /shared/index || { echo "No /shared/index"; exit 1; }
+              rm -f current
+              if [ -d "snapshots" ] && [ "$(ls -A snapshots)" ]; then
+                latest=$(ls -t snapshots/ | head -1)
+                ln -s "snapshots/$latest" current
+                echo "Symlinked /shared/index/current → $(readlink current)"
+              else
+                echo "No snapshots found, skipping symlink creation"
+              fi
+          volumeMounts:
+            - name: shared-indexes
+              mountPath: /shared/index
+      containers:
+        - name: indexer-reader
+          image: biostudies/biostudies-index-service:dev
+          imagePullPolicy: Always
+          env:
+            - name: INDEXER_ROLE
+              value: reader
+            - name: INDEX_BASE_DIR
+              value: /shared/index/current
+            - name: HTTP_PROXY
+              value: "http://hx-wwwcache.ebi.ac.uk:3128"
+            - name: HTTPS_PROXY
+              value: "http://hx-wwwcache.ebi.ac.uk:3128"
+            - name: http_proxy
+              value: "http://hx-wwwcache.ebi.ac.uk:3128"
+            - name: https_proxy
+              value: "http://hx-wwwcache.ebi.ac.uk:3128"
+            - name: NO_PROXY
+              value: "localhost,127.0.0.1,.cluster.local,.svc,biostudies-beta"
+            - name: no_proxy
+              value: "localhost,127.0.0.1,.cluster.local,.svc,biostudies-beta"
+            - name: JAVA_TOOL_OPTIONS
+              value: >-
+                -Djdk.httpclient.allowHTTP2=false
+                -Djdk.httpclient.keepalive.timeout=0
+                -Djdk.httpclient.HttpClient.log=all
+                -Dhttp.proxyHost=hx-wwwcache.ebi.ac.uk
+                -Dhttp.proxyPort=3128
+                -Dhttps.proxyHost=hx-wwwcache.ebi.ac.uk
+                -Dhttps.proxyPort=3128
+                -Dhttp.nonProxyHosts=localhost|127.0.0.1|*.cluster.local|*.svc|hx-wwwcache.ebi.ac.uk
+          volumeMounts:
+            - name: shared-indexes
+              mountPath: /shared/index
+            - name: efo-volume
+              mountPath: /app/data
+            - name: security-config
+              mountPath: /app/config
+              readOnly: true
+        - name: efo-sidecar
+          image: alpine:3.19
+          securityContext:
+            runAsUser: 0
+          env:
+            - name: HTTP_PROXY
+              value: "http://hx-wwwcache.ebi.ac.uk:3128"
+            - name: HTTPS_PROXY
+              value: "http://hx-wwwcache.ebi.ac.uk:3128"
+            - name: http_proxy
+              value: "http://hx-wwwcache.ebi.ac.uk:3128"
+            - name: https_proxy
+              value: "http://hx-wwwcache.ebi.ac.uk:3128"
+            - name: NO_PROXY
+              value: "localhost,127.0.0.1,.cluster.local,.svc"
+            - name: no_proxy
+              value: "localhost,127.0.0.1,.cluster.local,.svc"
+          command: ["/bin/sh"]
+          args:
+            - -c
+            - |
+              set -e
+              apk add --no-cache wget
+              if [ ! -f /app/data/efo.owl ]; then
+                echo "efo.owl not found, downloading..."
+                wget --proxy=on -O /app/data/efo.owl "https://www.ebi.ac.uk/efo/efo.owl"
+              else
+                echo "efo.owl already present, skipping download"
+              fi
+              tail -f /dev/null
+          volumeMounts:
+            - name: efo-volume
+              mountPath: /app/data
+      volumes:
+        - name: shared-indexes
+          persistentVolumeClaim:
+            claimName: shared-indexes-pvc
+        - name: efo-volume
+          emptyDir: {}
+        - name: security-config
+          secret:
+            secretName: indexer-security-config

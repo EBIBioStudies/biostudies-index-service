@@ -1,6 +1,7 @@
 package uk.ac.ebi.biostudies.index_service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
@@ -39,6 +40,9 @@ public class InitializationService {
   private final TaxonomyManager taxonomyManager;
   private final WebSocketConnectionService webSocketConnectionService;
   private final EFOTermMatcher efoTermMatcher;
+
+  @Value("${indexer.role}")
+  private String indexerRole;
 
   public InitializationService(
       CollectionRegistryService collectionRegistryService,
@@ -105,7 +109,7 @@ public class InitializationService {
       // Finally, establish WebSocket connection for receiving messages
       webSocketConnectionService.openWebsocket();
 
-      log.info("Application initialization completed successfully");
+      log.info("Application initialization completed successfully. Role: {}", indexerRole);
 
     } catch (Exception e) {
       log.error("Application initialization failed", e);
