@@ -16,7 +16,10 @@ import org.springframework.stereotype.Component;
  */
 @Getter
 @Component
-@PropertySource("classpath:security.properties")
+@PropertySource(value = {
+    "classpath:security.properties",                    // fallback for local dev
+    "file:/app/config/security.properties"              // k8 mounted secret overrides
+}, ignoreResourceNotFound = true)
 public class SecurityConfig {
 
   private final String profileUrl;

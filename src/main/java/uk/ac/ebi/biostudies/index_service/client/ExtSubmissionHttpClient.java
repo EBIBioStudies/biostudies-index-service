@@ -94,6 +94,7 @@ public class ExtSubmissionHttpClient {
         }
 
         log.warn("Unexpected status {} for URL: {}", statusCode, url);
+        attempt++;
 
       } catch (Exception e) {
         lastException = e;
