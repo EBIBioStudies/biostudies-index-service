@@ -10,6 +10,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.messaging.simp.stomp.StompSession;
+import uk.ac.ebi.biostudies.index_service.config.AppRoleConfig;
 import uk.ac.ebi.biostudies.index_service.index.SubmissionSyncListener;
 
 /** Unit tests for RabbitMQStompService. */
@@ -20,12 +21,13 @@ class RabbitMQStompServiceTest {
   @Mock private RabbitMqMessagingConfig messagingConfig;
   @Mock private SubmissionSyncListener submissionSyncListener;
   @Mock private StompSession stompSession;
+  @Mock private AppRoleConfig appRoleConfig;
 
   private RabbitMQStompService service;
 
   @BeforeEach
   void setUp() {
-    service = new RabbitMQStompService(rabbitMqConfig, messagingConfig, submissionSyncListener);
+    service = new RabbitMQStompService(rabbitMqConfig, messagingConfig, submissionSyncListener, appRoleConfig);
   }
 
   @Test

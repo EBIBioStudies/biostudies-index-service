@@ -11,7 +11,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.lang.NonNull;
 import org.springframework.messaging.converter.StringMessageConverter;
 import org.springframework.messaging.simp.stomp.StompCommand;
@@ -24,7 +23,7 @@ import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.client.WebSocketClient;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
-import uk.ac.ebi.biostudies.index_service.Constants;
+import uk.ac.ebi.biostudies.index_service.config.AppRoleConfig;
 import uk.ac.ebi.biostudies.index_service.index.SubmissionSyncListener;
 
 /**
@@ -49,22 +48,22 @@ public class RabbitMQStompService {
   private final RabbitMqConfig rabbitMqConfig;
   private final RabbitMqMessagingConfig messagingConfig;
   private final SubmissionSyncListener submissionSyncListener;
+  private final AppRoleConfig appRoleConfig;
   private final ObjectMapper objectMapper;
 
   private final AtomicReference<StompSession> stompSession = new AtomicReference<>();
   private final AtomicBoolean isShuttingDown = new AtomicBoolean(false);
   private ThreadPoolTaskScheduler taskScheduler;
 
-  @Value("${indexer.role}")
-  private String indexerRole;
-
   public RabbitMQStompService(
       RabbitMqConfig rabbitMqConfig,
       RabbitMqMessagingConfig messagingConfig,
-      SubmissionSyncListener submissionSyncListener) {
+      SubmissionSyncListener submissionSyncListener,
+      AppRoleConfig appRoleConfig) {
     this.rabbitMqConfig = rabbitMqConfig;
     this.messagingConfig = messagingConfig;
     this.submissionSyncListener = submissionSyncListener;
+    this.appRoleConfig = appRoleConfig;
     this.objectMapper = new ObjectMapper();
   }
 
@@ -134,7 +133,7 @@ public class RabbitMQStompService {
       return;
     }
 
-    if (!Constants.WRITER_ROLE.equalsIgnoreCase(indexerRole)) {
+    if (!appRoleConfig.isWriterRole()) {
       log.debug("Application not configured with writer role");
       return;
     }

@@ -19,6 +19,41 @@ spec:
       securityContext:
         runAsUser: 1741
         runAsGroup: 1030
+      initContainers:
+        - name: efo-init
+          image: alpine:3.19
+          securityContext:
+            runAsUser: 0
+          env:
+            - name: HTTP_PROXY
+              value: "http://hx-wwwcache.ebi.ac.uk:3128"
+            - name: HTTPS_PROXY
+              value: "http://hx-wwwcache.ebi.ac.uk:3128"
+            - name: http_proxy
+              value: "http://hx-wwwcache.ebi.ac.uk:3128"
+            - name: https_proxy
+              value: "http://hx-wwwcache.ebi.ac.uk:3128"
+            - name: NO_PROXY
+              value: "localhost,127.0.0.1,.cluster.local,.svc"
+            - name: no_proxy
+              value: "localhost,127.0.0.1,.cluster.local,.svc"
+          command: ["/bin/sh"]
+          args:
+            - -c
+            - |
+              set -e
+              apk add --no-cache wget
+              if [ ! -f /app/data/efo.owl ]; then
+                echo "efo.owl not found, downloading..."
+                wget -O /app/data/efo.owl "https://www.ebi.ac.uk/efo/efo.owl"
+                echo "efo.owl download complete"
+              else
+                echo "efo.owl already present, skipping download"
+              fi
+          volumeMounts:
+            - name: efo-volume
+              mountPath: /app/data
+
       containers:
         - name: indexer
           image: biostudies/biostudies-index-service:dev
@@ -60,71 +95,62 @@ spec:
             - name: security-config
               mountPath: /app/config
               readOnly: true
-        - name: efo-sidecar
-          image: alpine:3.19
+
+        - name: snapshot-sidecar
+          image: biostudies/rsync-sidecar:alpine-3.19
           securityContext:
-            runAsUser: 0
+            runAsUser: 1741
+            runAsGroup: 1030
           env:
-            - name: HTTP_PROXY
-              value: "http://hx-wwwcache.ebi.ac.uk:3128"
-            - name: HTTPS_PROXY
-              value: "http://hx-wwwcache.ebi.ac.uk:3128"
-            - name: http_proxy
-              value: "http://hx-wwwcache.ebi.ac.uk:3128"
-            - name: https_proxy
-              value: "http://hx-wwwcache.ebi.ac.uk:3128"
-            - name: NO_PROXY
-              value: "localhost,127.0.0.1,.cluster.local,.svc"
-            - name: no_proxy
-              value: "localhost,127.0.0.1,.cluster.local,.svc"
+            - name: SNAPSHOT_INTERVAL_SECONDS
+              value: "60"
           command: ["/bin/sh"]
           args:
             - -c
             - |
               set -e
-              apk add --no-cache wget
-              if [ ! -f /app/data/efo.owl ]; then
-                echo "efo.owl not found, downloading..."
-                wget -O /app/data/efo.owl "https://www.ebi.ac.uk/efo/efo.owl"
-              else
-                echo "efo.owl already present, skipping download"
-              fi
-              tail -f /dev/null
-          volumeMounts:
-            - name: efo-volume
-              mountPath: /app/data
-        - name: snapshot-sidecar
-          image: biostudies/rsync-sidecar:alpine-3.19
-          securityContext:
-            runAsUser: 0
-          env:
-            - name: SNAPSHOT_INTERVAL_SECONDS
-              value: "3600"
-            - name: SNAPSHOT_BASE
-              value: "/nfs/indexes/snapshots"
-          command: ["/bin/bash"]
-          args:
-            - -c
-            - |
-              set -e
-              interval="${SNAPSHOT_INTERVAL_SECONDS:-3600}"
-              snapshot_base="${SNAPSHOT_BASE:-/nfs/indexes/snapshots}"
-              mkdir -p "$snapshot_base"
-              echo "snapshot-sidecar: starting rsync loop from /var/data/indexes to $snapshot_base"
+              interval="${SNAPSHOT_INTERVAL_SECONDS:-60}"
+              base="${SNAPSHOT_BASE:-/nfs/indexes}"
+              target="$base/current"
+
+              mkdir -p "$base"
+              echo "snapshot-sidecar: starting rsync loop to $target"
+
               while true; do
-                ts=$(date +%Y%m%d-%H%M%S)
-                target="$snapshot_base/$ts"
-                mkdir -p "$target"
-                echo "snapshot-sidecar: rsync to $target"
-                rsync -a --delete /var/data/indexes/ "$target"/
-                echo "snapshot-sidecar: snapshot $ts completed, sleeping $interval seconds"
+                tmp="$base/.current-tmp"
+                rm -rf "$tmp" 2>/dev/null || true
+
+                mkdir -p "$tmp"
+                echo "snapshot-sidecar: incremental rsync (ignore NFS locks)"
+
+                # Ignore NFS lockfiles, incremental sync
+                rsync -a \
+                      --delete-excluded \
+                      --filter='protect .nfs*' \
+                      --filter='- /*' \
+                      /var/data/indexes/ "$tmp"/
+
+                echo "snapshot-sidecar: switch $tmp → $target"
+                mv "$tmp" "$target" 2>/dev/null || {
+                  echo "snapshot-sidecar: mv busy, rsync direct to target"
+                  rsync -a \
+                        --delete-excluded \
+                        --filter='protect .nfs*' \
+                        --filter='- /*' \
+                        /var/data/indexes/ "$target"/
+                }
+
+                echo "snapshot-sidecar: sync complete, sleep $interval"
                 sleep "$interval"
               done
+
           volumeMounts:
             - name: index-storage
               mountPath: /var/data/indexes
+              readOnly: true
             - name: shared-indexes
               mountPath: /nfs/indexes
+
       volumes:
         - name: efo-volume
           emptyDir: {}
@@ -134,6 +160,7 @@ spec:
         - name: security-config
           secret:
             secretName: indexer-security-config
+
   volumeClaimTemplates:
     - metadata:
         name: index-storage
