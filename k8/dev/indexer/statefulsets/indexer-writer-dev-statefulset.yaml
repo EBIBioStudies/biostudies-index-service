@@ -50,6 +50,8 @@ spec:
               else
                 echo "efo.owl already present, skipping download"
               fi
+              chown 1741:1030 /app/data/efo.owl
+              chmod 640 /app/data/efo.owl
           volumeMounts:
             - name: efo-volume
               mountPath: /app/data
@@ -104,43 +106,32 @@ spec:
           env:
             - name: SNAPSHOT_INTERVAL_SECONDS
               value: "60"
-          command: ["/bin/sh"]
+          command: [ "/bin/sh" ]
           args:
             - -c
             - |
               set -e
               interval="${SNAPSHOT_INTERVAL_SECONDS:-60}"
-              base="${SNAPSHOT_BASE:-/nfs/indexes}"
-              target="$base/current"
-
-              mkdir -p "$base"
-              echo "snapshot-sidecar: starting rsync loop to $target"
-
+              target="/nfs/indexes/current"
+              
+              mkdir -p "$target"
+              echo "snapshot-sidecar: starting rsync loop to $target every ${interval}s"
+              
               while true; do
-                tmp="$base/.current-tmp"
-                rm -rf "$tmp" 2>/dev/null || true
-
-                mkdir -p "$tmp"
-                echo "snapshot-sidecar: incremental rsync (ignore NFS locks)"
-
-                # Ignore NFS lockfiles, incremental sync
+                echo "snapshot-sidecar: syncing to $target"
+              
                 rsync -a \
-                      --delete-excluded \
-                      --filter='protect .nfs*' \
-                      --filter='- /*' \
-                      /var/data/indexes/ "$tmp"/
-
-                echo "snapshot-sidecar: switch $tmp → $target"
-                mv "$tmp" "$target" 2>/dev/null || {
-                  echo "snapshot-sidecar: mv busy, rsync direct to target"
-                  rsync -a \
-                        --delete-excluded \
-                        --filter='protect .nfs*' \
-                        --filter='- /*' \
-                        /var/data/indexes/ "$target"/
-                }
-
-                echo "snapshot-sidecar: sync complete, sleep $interval"
+                      --checksum \
+                      --delete \
+                      --omit-dir-times \
+                      --no-perms \
+                      --no-owner \
+                      --no-group \
+                      --exclude='.nfs*' \
+                      --exclude='write.lock' \
+                      /var/data/indexes/ "$target"/
+              
+                echo "snapshot-sidecar: sync complete, sleeping ${interval}s"
                 sleep "$interval"
               done
 
