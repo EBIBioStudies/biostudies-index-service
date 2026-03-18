@@ -5,7 +5,7 @@ metadata:
   namespace: biostudies-index-service-dev
 spec:
   serviceName: indexer-reader
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: indexer

@@ -33,11 +33,10 @@ import uk.ac.ebi.biostudies.index_service.index.IndexName;
  * <p>Behaviour is split by role:
  *
  * <ul>
- *   <li><b>Writer role</b>: opens a full NRT stack (IndexWriter + SearcherManager +
- *       ControlledRealTimeReopenThread) against local NVMe storage.
- *   <li><b>Reader role</b>: opens a lightweight read-only stack (SearcherManager) against the NFS
- *       snapshot directory, refreshed via {@link DirectoryReader#openIfChanged} on a fixed poll
- *       schedule.
+ *   <li><b>Writer role</b>: opens a full near-real-time stack ({@code IndexWriter} + {@code
+ *       SearcherManager} + {@code ControlledRealTimeReopenThread}) on local storage.
+ *   <li><b>Reader role</b>: opens a read-only stack ({@code SearcherManager}) on the NFS snapshot
+ *       directory and periodically checks for new commits.
  * </ul>
  */
 @Slf4j
@@ -193,12 +192,12 @@ public class IndexManager {
   /**
    * Opens the full NRT writer stack for a single index.
    *
-   * <p>Stack: {@code IndexWriter} (local NVMe, FSDirectory) → {@code SearcherManager} → {@code
-   * ControlledRealTimeReopenThread}. Readers see new documents within {@value
+   * <p>Stack: {@code IndexWriter} (local storage, {@code FSDirectory}) → {@code SearcherManager} →
+   * {@code ControlledRealTimeReopenThread}. Readers see new documents within {@value
    * TARGET_MAX_STALE_SEC}s of {@code addDocument()}, before any {@code commit()} is required.
    *
    * @param indexName logical index name
-   * @param indexPath path to the local NVMe index directory
+   * @param indexPath path to the local index directory
    */
   private void openWriterIndex(IndexName indexName, String indexPath) {
     String indexNameStr = indexName.getIndexName();
@@ -252,12 +251,12 @@ public class IndexManager {
   /**
    * Opens a read-only index stack for a single index against the NFS snapshot directory.
    *
-   * <p>Stack: {@code NIOFSDirectory} (NFS-safe, no mmap) → {@code SearcherManager}. A background
-   * poll task calls {@link SearcherManager#maybeRefresh()} every {@value
-   * READER_POLL_INTERVAL_SEC}s, which internally delegates to {@link DirectoryReader#openIfChanged}
-   * and swaps the reader atomically when the writer has produced a new commit.
+   * <p>Stack: {@code NIOFSDirectory} → {@code SearcherManager}. A background poll task checks for a
+   * newer Lucene commit every {@value READER_POLL_INTERVAL_SEC}s and refreshes the searcher when
+   * one is available.
    *
-   * <p>No {@code IndexWriter} is opened — this pod never acquires {@code write.lock}.
+   * <p>No {@code IndexWriter} is opened in reader role, so this pod never acquires {@code
+   * write.lock}.
    *
    * @param indexName logical index name
    * @param indexPath path to the NFS snapshot directory
@@ -313,30 +312,34 @@ public class IndexManager {
    * a new reader is opened sharing unchanged segments with the previous one. The old reader is
    * released by {@link SearcherManager} once no searchers hold a reference.
    *
-   * <p>Exceptions are logged but not rethrown — a failed poll retains the current (stale) reader,
-   * which is preferable to crashing the scheduler thread.
+   * <p>This checks whether the current searcher can be refreshed to a newer Lucene commit. If the
+   * index has not changed, the poll is effectively a low-cost no-op. If a new commit is available,
+   * the searcher is refreshed and the cached generation is updated.
+   *
+   * <p>Exceptions are logged but not rethrown so the scheduler keeps running.
    */
   private void pollForIndexChanges(IndexName indexName, String indexNameStr) {
     try {
       SearcherManager manager = container.getSearcherManager(indexName);
-
-      long currentGeneration = getCurrentGeneration(manager);
-
-      if (currentGeneration <= lastSeenGeneration.getOrDefault(indexNameStr, -1L)) {
-        log.trace("Index {} unchanged at poll (generation {})", indexNameStr, currentGeneration);
-        return; // bail out before calling maybeRefresh() at all
-      }
-
-      // Generation has advanced — now worth refreshing
       boolean refreshed = manager.maybeRefresh();
+
       if (refreshed) {
         long newGeneration = getCurrentGeneration(manager);
-        log.info(
-            "Index {} refreshed — generation {} → {}",
-            indexNameStr,
-            lastSeenGeneration.getOrDefault(indexNameStr, -1L),
-            newGeneration);
-        lastSeenGeneration.put(indexNameStr, newGeneration);
+        long previousGeneration = lastSeenGeneration.getOrDefault(indexNameStr, -1L);
+
+        if (newGeneration > previousGeneration) {
+          log.info(
+              "Index {} refreshed — generation {} → {}",
+              indexNameStr,
+              previousGeneration,
+              newGeneration);
+          lastSeenGeneration.put(indexNameStr, newGeneration);
+        } else {
+          log.trace(
+              "Index {} refreshed without generation change ({})", indexNameStr, newGeneration);
+        }
+      } else {
+        log.trace("Index {} unchanged at poll", indexNameStr);
       }
 
     } catch (IOException e) {
