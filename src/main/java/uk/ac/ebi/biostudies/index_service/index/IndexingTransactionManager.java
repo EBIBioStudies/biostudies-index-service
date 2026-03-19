@@ -54,9 +54,9 @@ public class IndexingTransactionManager {
     log.debug("commitData: {}", commitData);
     indexManager.getSubmissionIndexWriter().setLiveCommitData(commitData.entrySet());
     indexManager.commitSubmissionRelatedIndices();
-    log.debug("Data commited");
+    log.info("Data commited");
     indexManager.refreshAll();
-    log.debug("Indices refreshed");
+    log.info("Indices refreshed");
     //TODO: searchService.clearStatsCache();
   }
 

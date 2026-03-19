@@ -39,5 +39,7 @@ public class TaxonomyManager {
 
     // Configure EFO facet (depth-encoded hierarchy)
     facetsConfig.setMultiValued("efo", true);
+    facetsConfig.setMultiValued("efo_id", true);
+    facetsConfig.setMultiValued("efo_term", true);
   }
 }

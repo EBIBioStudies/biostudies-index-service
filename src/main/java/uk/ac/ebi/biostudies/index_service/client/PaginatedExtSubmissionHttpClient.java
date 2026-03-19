@@ -9,6 +9,7 @@ import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import uk.ac.ebi.biostudies.index_service.config.SecurityConfig;
+import uk.ac.ebi.biostudies.index_service.model.ExtendedSubmissionMetadata;
 
 /** Extension to ExtSubmissionHttpClient for paginated batch fetches. */
 @Slf4j
@@ -65,18 +66,21 @@ public class PaginatedExtSubmissionHttpClient extends ExtSubmissionHttpClient {
   //  }
 
   /**
-   * Streams all pages matching filters (memory efficient - no full load).
+   * Streams all extended submissions matching filters (memory efficient). On fetch failure, skips
+   * to next offset and continues.
    *
-   * @param filters filter criteria
-   * @param processor called for each page (100 submissions/page)
-   * @param pageSize submissions per page (default: 100)
-   * @throws IOException on fetch failures
+   * @param filters filter criteria (non-null)
+   * @param processor called per successful page (non-null)
+   * @param pageSize submissions per page (> 0)
+   * @throws IOException on unrecoverable failures
    */
   public void processAllExtSubmissionsStream(
       ExtSubmissionFilters filters, PageProcessor processor, int pageSize)
       throws IOException, SubmissionFetchException {
+
     Objects.requireNonNull(filters, "filters must not be null");
     Objects.requireNonNull(processor, "processor must not be null");
+    if (pageSize <= 0) throw new IllegalArgumentException("pageSize must be > 0");
 
     String baseUrl = securityConfig.getBackendBaseURL().trim();
     if (baseUrl.isBlank()) {
@@ -86,18 +90,43 @@ public class PaginatedExtSubmissionHttpClient extends ExtSubmissionHttpClient {
         baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
 
     String nextUrl = normalizedBase + "/submissions/extended" + filters.toQueryParams(0, pageSize);
+    int pageIndex = 0;
+    long totalElements = -1L;
 
-    int pageNum = 0;
     while (nextUrl != null) {
-      PaginatedExtSubmissions page = fetchPaginatedPage(nextUrl);
-      processor.process(page); // Process immediately (no buffering)
+      PaginatedExtSubmissions page = null;
 
-      nextUrl = page.getNext();
-      log.debug(
-          "Streamed page {}: {} submissions (next: {})",
-          ++pageNum,
-          page.getContent().size(),
-          nextUrl != null);
+      try {
+        page = fetchPaginatedPage(nextUrl);
+      } catch (SubmissionFetchException e) {
+        log.error("Failed to fetch page {} at {}: {}", pageIndex + 1, nextUrl, e.getMessage());
+      }
+
+      // Recovery: if fetch failed or page null, skip to next offset
+      if (page == null || page.content() == null) {
+        log.warn("Skipping page {} (null/empty), advancing to next offset", pageIndex + 1);
+        pageIndex++;
+        nextUrl =
+            normalizedBase
+                + "/submissions/extended"
+                + filters.toQueryParams(pageIndex * pageSize, pageSize);
+        continue;
+      }
+
+      processor.process(page);
+      totalElements = page.totalElements();
+
+      nextUrl = page.next();
+      if (nextUrl != null && filters.getCollection() != null && !nextUrl.contains("collection=")) {
+        nextUrl += "&collection=" + filters.getCollection();
+      }
+
+      log.info(
+          "Streamed page {}: {} subs (next: {}) total: {}",
+          ++pageIndex,
+          page.content().size(),
+          nextUrl != null,
+          totalElements);
     }
   }
 
@@ -108,6 +137,24 @@ public class PaginatedExtSubmissionHttpClient extends ExtSubmissionHttpClient {
     if (rawJson == null) {
       return new PaginatedExtSubmissions(List.of(), 0L, 0, 0, null, null);
     }
-    return objectMapper.treeToValue(rawJson, PaginatedExtSubmissions.class);
+    log.info("Processing page: {}", url);
+
+    RawPaginatedResponse rawPage = objectMapper.treeToValue(rawJson, RawPaginatedResponse.class);
+
+    List<ExtendedSubmissionMetadata> content =
+        rawPage.content().stream()
+            .map(
+                rawNode ->
+                    ExtendedSubmissionMetadata.fromJsonNode(
+                        rawNode, objectMapper)) // Throws SubmissionFetchException
+            .toList();
+
+    return new PaginatedExtSubmissions(
+        content,
+        rawPage.totalElements(),
+        rawPage.limit(),
+        rawPage.offset(),
+        rawPage.next(),
+        rawPage.previous());
   }
 }

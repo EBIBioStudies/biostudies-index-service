@@ -61,6 +61,8 @@ public class IndexingService {
 
   private ThreadPoolExecutor threadPoolExecutor;
 
+  private static final int COMMIT_BATCH_SIZE = 1_000;
+
   @Value("${indexer.thread-count:8}")
   private int threadCount;
 
@@ -212,38 +214,45 @@ public class IndexingService {
     tasks.put(streamTaskId, streamStatus);
 
     activeTasks.incrementAndGet();
-    threadPoolExecutor.submit(
-        () -> { // Main thread pool
-          try {
-            AtomicLong totalProcessed = new AtomicLong(0);
+    threadPoolExecutor.submit(() -> {
+      try {
+        AtomicLong totalProcessed = new AtomicLong(0);
 
-            paginatedClient.processAllExtSubmissionsStream(
-                filters,
-                page -> {
-                  // Page batching with indexWithoutCommit
-                  for (ExtendedSubmissionMetadata metadata : page.getContent()) {
-                    submissionIndexer.indexWithoutCommit(metadata, true);
+        paginatedClient.processAllExtSubmissionsStream(
+            filters,
+            page -> {
+              for (ExtendedSubmissionMetadata metadata : page.content()) {
+                submissionIndexer.indexWithoutCommit(metadata, true);
+                totalProcessed.incrementAndGet();
 
-                    totalProcessed.incrementAndGet();
-                  }
-                  indexingTransactionManager.commit(); // Every ~100
-                  log.info("Stream [{}]: page complete, total: {}", streamTaskId, totalProcessed);
-                },
-                pageSize);
-            streamStatus.setCompleted();
-          } catch (Exception e) {
-            streamStatus.setFailed(e.getMessage());
-          } finally {
-            activeTasks.decrementAndGet();
-          }
-        });
+                // Commit every COMMIT_BATCH_SIZE submissions
+                if (totalProcessed.get() % COMMIT_BATCH_SIZE == 0) {
+                  indexingTransactionManager.commit();
+                  log.debug("Stream [{}]: committed batch at {}", streamTaskId, totalProcessed.get());
+                }
+              }
+            },
+            pageSize);
 
-    int queuePosition = activeTasks.get() + threadPoolExecutor.getQueue().size() + 1;
-    return new IndexingInfo(
-        streamTaskId,
-        queuePosition,
-        streamStatus.getTaskId(),
-        "/streams/" + streamTaskId + "/status");
+        // Final commit for remaining submissions
+        indexingTransactionManager.commit();
+        streamStatus.setCompleted();
+        log.info("Stream [{}]: completed, total: {}", streamTaskId, totalProcessed.get());
+
+      } catch (Exception e) {
+        streamStatus.setFailed(e.getMessage());
+        log.error("Stream [{}] failed: {}", streamTaskId, e.getMessage(), e);
+      } finally {
+        activeTasks.decrementAndGet();
+      }
+    });
+
+    int activeCount = threadPoolExecutor.getActiveCount();
+    int queueSize = threadPoolExecutor.getQueue().size();
+    int queuePosition = activeCount + queueSize + 1;
+
+    return new IndexingInfo(streamTaskId, queuePosition,
+        streamStatus.getTaskId(), "/streams/" + streamTaskId + "/status");
   }
 
   /**
@@ -334,5 +343,24 @@ public class IndexingService {
     log.info("PreDestroy: shutting down pools");
     threadPoolExecutor.shutdown();
     cleanupScheduler.shutdown();
+  }
+
+  public IndexingInfo queueBatch(List<String> accNos) {
+    // Option 1: Create one "batch" task that internally loops
+    // Option 2: Enqueue each as individual task but return a batch coordinator
+    // For simplicity, enqueue individually but group under one logical task ID
+    String batchTaskId = "batch-" + UUID.randomUUID().toString().substring(0, 8);
+
+    List<IndexingInfo> infos =
+        accNos.stream()
+            .map(this::queueSubmission) // Reuse existing single logic
+            .toList();
+
+    // Aggregate position (first one's position, or average, or create batch status)
+    IndexingInfo batchInfo = infos.get(0); // Simplest: use first task's info
+    // TODO: Enhance IndexingInfo to track "batch of N" if desired
+
+    log.info("Queued batch {}: {} submissions", batchTaskId, accNos.size());
+    return batchInfo;
   }
 }
