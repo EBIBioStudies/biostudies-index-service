@@ -1,0 +1,21 @@
+site_name: BioStudies Index Service
+
+theme:
+  name: material
+
+nav:
+  - Home: index.md
+  - API: api.md
+  - Deployment: deployment.md
+  - Parsers: parsers.md
+  - Analyzers: analyzers.md
+
+plugins:
+  - search
+
+markdown_extensions:
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
