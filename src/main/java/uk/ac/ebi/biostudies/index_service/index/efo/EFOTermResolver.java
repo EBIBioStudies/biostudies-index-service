@@ -2,10 +2,14 @@ package uk.ac.ebi.biostudies.index_service.index.efo;
 
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.experimental.FieldDefaults;
+import org.springframework.stereotype.Component;
 
 /**
  * Queries EFO for term expansion using a loaded {@link EFOModel}. Supports recursive retrieval via
@@ -49,9 +53,77 @@ public class EFOTermResolver {
     return versionInfo;
   }
 
+  /**
+   * Returns the primary term for an EFO ID.
+   *
+   * @param efoId EFO identifier
+   * @return primary term, or null if not found
+   */
+  public String getTerm(String efoId) {
+    if (efoId == null || model == null) {
+      return null;
+    }
+    EFONode node = model.getNodes().get(efoId);
+    return node != null ? node.getTerm() : null;
+  }
+
+  /**
+   * Returns direct child IDs for an EFO ID.
+   *
+   * @param efoId EFO identifier
+   * @return direct child IDs, or empty set if none
+   */
+  public Set<String> getChildIds(String efoId) {
+    if (efoId == null || model == null) {
+      return Collections.emptySet();
+    }
+
+    EFONode node = model.getNodes().get(efoId);
+    if (node == null || !node.hasChildren()) {
+      return Collections.emptySet();
+    }
+
+    return node.getChildren().stream()
+        .map(EFONode::getId)
+        .filter(Objects::nonNull)
+        .collect(Collectors.toCollection(LinkedHashSet::new));
+  }
+
+  /**
+   * Returns direct child terms for an EFO ID.
+   *
+   * @param efoId EFO identifier
+   * @return direct child terms, or empty set if none
+   */
+  public Set<String> getChildTerms(String efoId) {
+    if (efoId == null || model == null) {
+      return Collections.emptySet();
+    }
+
+    EFONode node = model.getNodes().get(efoId);
+    if (node == null || !node.hasChildren()) {
+      return Collections.emptySet();
+    }
+
+    return node.getChildren().stream()
+        .map(EFONode::getTerm)
+        .filter(term -> term != null && !term.isBlank())
+        .collect(Collectors.toCollection(LinkedHashSet::new));
+  }
+
+  /**
+   * Checks whether an EFO ID has direct children.
+   *
+   * @param efoId EFO identifier
+   * @return true if the node has children
+   */
+  public boolean hasChildren(String efoId) {
+    return !getChildIds(efoId).isEmpty();
+  }
+
   /** Retrieves terms for EFO ID based on flags. */
   public Set<String> getTerms(String efoId, int includeFlags) {
-    if (efoId == null || includeFlags == 0) {
+    if (efoId == null || includeFlags == 0 || model == null) {
       return Collections.emptySet();
     }
     EFONode node = model.getNodes().get(efoId);
@@ -64,7 +136,7 @@ public class EFOTermResolver {
     if (node == null) return terms;
 
     // Self + alts
-    if ((includeFlags & INCLUDE_SELF) != 0) {
+    if ((includeFlags & INCLUDE_SELF) != 0 && node.getTerm() != null) {
       terms.add(node.getTerm());
     }
     if ((includeFlags & INCLUDE_ALT_TERMS) != 0) {

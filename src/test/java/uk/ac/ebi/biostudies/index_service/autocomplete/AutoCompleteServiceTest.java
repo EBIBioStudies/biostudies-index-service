@@ -1,13 +1,19 @@
 package uk.ac.ebi.biostudies.index_service.autocomplete;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.util.List;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.Sort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -15,46 +21,32 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.util.ReflectionTestUtils;
+import uk.ac.ebi.biostudies.index_service.search.searchers.EFOSearchHit;
 import uk.ac.ebi.biostudies.index_service.search.searchers.EFOSearcher;
-import uk.ac.ebi.biostudies.index_service.search.taxonomy.TaxonomyNode;
-import uk.ac.ebi.biostudies.index_service.search.taxonomy.TaxonomySearcher;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AutoCompleteService")
 class AutoCompleteServiceTest {
 
-  @Mock
-  private TaxonomySearcher taxonomySearcher;
+  @Mock private EFOHierarchyService efoHierarchyService;
+  @Mock private EFOTermCountService efoTermCountService;
+  @Mock private EFOTermMatcher efoTermMatcher;
+  @Mock private EFOSearcher efoSearcher;
 
-  @Mock
-  private EFOSearcher efoSearcher;
+  @MockitoBean
+  @Value("${autocomplete.filter-by-index:true}")
+  private boolean filterByIndex = true;
 
   private AutoCompleteService autoCompleteService;
 
   @BeforeEach
   void setUp() {
-    autoCompleteService = new AutoCompleteService(efoSearcher, taxonomySearcher);
-
-    // Default mock behavior for formatting (lenient because not all tests reach formatting)
-    lenient().when(taxonomySearcher.formatAsAutocompleteResponse(anyList()))
-        .thenAnswer(invocation -> {
-          List<TaxonomyNode> nodes = invocation.getArgument(0);
-          if (nodes == null || nodes.isEmpty()) {
-            return "";
-          }
-          StringBuilder result = new StringBuilder();
-          for (TaxonomyNode node : nodes) {
-            // Format: term|o|efoId|count (with efoId empty if hasChildren is false)
-            String efoIdPart = node.hasChildren() && node.efoId() != null ? node.efoId() : "";
-            result.append(node.term())
-                .append("|o|")
-                .append(efoIdPart)
-                .append("|")
-                .append(node.count())
-                .append("\\n");
-          }
-          return result.toString();
-        });
+    autoCompleteService =
+        new AutoCompleteService(
+            efoSearcher, efoHierarchyService, efoTermCountService, efoTermMatcher);
   }
 
   @Nested
@@ -65,238 +57,203 @@ class AutoCompleteServiceTest {
     @DisplayName("should return formatted results for valid query")
     void shouldReturnFormattedResultsForValidQuery() throws IOException {
       // Given
-      List<TaxonomyNode> mockNodes = List.of(
-          new TaxonomyNode("mouse", 5, "http://purl.obolibrary.org/obo/NCBITaxon_10090", true),
-          new TaxonomyNode("macrophage", 3, "http://purl.obolibrary.org/obo/CL_0000235", false)
-      );
-      when(taxonomySearcher.searchAllDepths("mouse", 10)).thenReturn(mockNodes);
+      List<EFOSearchHit> searchHits =
+          List.of(
+              new EFOSearchHit("1", "EFO:0001", "mouse", null, null, List.of(), List.of()),
+              new EFOSearchHit("2", "EFO:0002", "macrophage", null, null, List.of(), List.of()));
+      when(efoSearcher.searchAll(any(Query.class), any(), anyInt())).thenReturn(searchHits);
+      when(efoTermCountService.countIncludingDescendantsByEfoId("EFO:0001")).thenReturn(5L);
+      when(efoTermCountService.countIncludingDescendantsByEfoId("EFO:0002")).thenReturn(3L);
 
       // When
       String result = autoCompleteService.getKeywordsWithCounts("mouse", 10);
 
       // Then
-      assertThat(result).isEqualTo(
-          "mouse|o|http://purl.obolibrary.org/obo/NCBITaxon_10090|5\\n" +
-              "macrophage|o||3\\n"
-      );
-      verify(taxonomySearcher).searchAllDepths("mouse", 10);
-      verify(taxonomySearcher).formatAsAutocompleteResponse(mockNodes);
+      assertThat(result).isEqualTo("mouse|o||5\nmacrophage|o||3\n");
+      verify(efoSearcher).searchAll(any(Query.class), any(), anyInt());
+      verify(efoTermCountService).countIncludingDescendantsByEfoId("EFO:0001");
+      verify(efoTermCountService).countIncludingDescendantsByEfoId("EFO:0002");
+      // No verification of efoHierarchyService here; expand is now count-aware.
     }
 
     @Test
     @DisplayName("should return empty string when no results found")
     void shouldReturnEmptyStringWhenNoResults() throws IOException {
       // Given
-      when(taxonomySearcher.searchAllDepths("xyz", 10)).thenReturn(List.of());
+      when(efoSearcher.searchAll(any(Query.class), any(), anyInt())).thenReturn(List.of());
 
       // When
       String result = autoCompleteService.getKeywordsWithCounts("xyz", 10);
 
       // Then
       assertThat(result).isEmpty();
-      verify(taxonomySearcher).searchAllDepths("xyz", 10);
+      verify(efoSearcher).searchAll(any(Query.class), any(), anyInt());
+      verifyNoInteractions(efoTermCountService, efoHierarchyService, efoTermMatcher);
     }
 
     @Test
     @DisplayName("should return empty string for null query")
-    void shouldReturnEmptyStringForNullQuery() throws IOException {
-      // When
-      String result = autoCompleteService.getKeywordsWithCounts(null, 10);
-
-      // Then
-      assertThat(result).isEmpty();
-      verify(taxonomySearcher, never()).searchAllDepths(anyString(), anyInt());
+    void shouldReturnEmptyStringForNullQuery() {
+      assertThat(autoCompleteService.getKeywordsWithCounts(null, 10)).isEmpty();
+      verifyNoInteractions(efoSearcher, efoTermCountService, efoHierarchyService, efoTermMatcher);
     }
 
     @Test
     @DisplayName("should return empty string for empty query")
-    void shouldReturnEmptyStringForEmptyQuery() throws IOException {
-      // When
-      String result = autoCompleteService.getKeywordsWithCounts("", 10);
-
-      // Then
-      assertThat(result).isEmpty();
-      verify(taxonomySearcher, never()).searchAllDepths(anyString(), anyInt());
+    void shouldReturnEmptyStringForEmptyQuery() {
+      assertThat(autoCompleteService.getKeywordsWithCounts("", 10)).isEmpty();
+      verifyNoInteractions(efoSearcher, efoTermCountService, efoHierarchyService, efoTermMatcher);
     }
 
     @Test
     @DisplayName("should return empty string for whitespace-only query")
-    void shouldReturnEmptyStringForWhitespaceOnlyQuery() throws IOException {
-      // When
-      String result = autoCompleteService.getKeywordsWithCounts("   ", 10);
-
-      // Then
-      assertThat(result).isEmpty();
-      verify(taxonomySearcher, never()).searchAllDepths(anyString(), anyInt());
+    void shouldReturnEmptyStringForWhitespaceOnlyQuery() {
+      assertThat(autoCompleteService.getKeywordsWithCounts("   ", 10)).isEmpty();
+      verifyNoInteractions(efoSearcher, efoTermCountService, efoHierarchyService, efoTermMatcher);
     }
 
     @Test
     @DisplayName("should cap limit to MAX_LIMIT when exceeded")
     void shouldCapLimitToMaxWhenExceeded() throws IOException {
       // Given
-      List<TaxonomyNode> mockNodes = List.of(
-          new TaxonomyNode("test", 1, null, false)
-      );
-      when(taxonomySearcher.searchAllDepths("test", 200)).thenReturn(mockNodes);
+      when(efoSearcher.searchAll(any(Query.class), any(), anyInt())).thenReturn(List.of());
 
       // When
       autoCompleteService.getKeywordsWithCounts("test", 999);
 
       // Then
-      verify(taxonomySearcher).searchAllDepths("test", 200);
+      verify(efoSearcher).searchAll(any(Query.class), any(), eq(200));
     }
 
     @Test
-    @DisplayName("should use provided limit when below max")
-    void shouldUseProvidedLimitWhenBelowMax() throws IOException {
+    @DisplayName("should use computed fetchLimit when below max")
+    void shouldUseComputedFetchLimitWhenBelowMax() throws IOException {
       // Given
-      List<TaxonomyNode> mockNodes = List.of(
-          new TaxonomyNode("test", 1, null, false)
-      );
-      when(taxonomySearcher.searchAllDepths("test", 5)).thenReturn(mockNodes);
+      when(efoSearcher.searchAll(any(Query.class), any(Sort.class), eq(15))) // 5*3=15
+          .thenReturn(List.of());
 
       // When
       autoCompleteService.getKeywordsWithCounts("test", 5);
 
       // Then
-      verify(taxonomySearcher).searchAllDepths("test", 5);
+      verify(efoSearcher).searchAll(any(Query.class), any(Sort.class), eq(15));
     }
 
     @Test
-    @DisplayName("should return empty string when IOException occurs")
-    void shouldReturnEmptyStringOnIOException() throws IOException {
-      // Given
-      when(taxonomySearcher.searchAllDepths("test", 10))
-          .thenThrow(new IOException("Index error"));
+    @DisplayName("should return empty string when search throws RuntimeException")
+    void shouldReturnEmptyStringOnSearchRuntimeException() {
+      doThrow(new RuntimeException("Search error"))
+          .when(efoSearcher)
+          .searchAll(any(Query.class), any(Sort.class), anyInt());
 
-      // When
       String result = autoCompleteService.getKeywordsWithCounts("test", 10);
 
-      // Then
       assertThat(result).isEmpty();
-      verify(taxonomySearcher).searchAllDepths("test", 10);
+      verify(efoSearcher).searchAll(any(Query.class), any(Sort.class), anyInt());
     }
 
     @Test
-    @DisplayName("should preserve result order")
-    void shouldPreserveResultOrder() throws IOException {
-      // Given
-      List<TaxonomyNode> mockNodes = List.of(
-          new TaxonomyNode("aardvark", 1, null, false),
-          new TaxonomyNode("bear", 2, null, false),
-          new TaxonomyNode("cat", 3, null, false)
-      );
-      when(taxonomySearcher.searchAllDepths("a", 10)).thenReturn(mockNodes);
-
-      // When
-      String result = autoCompleteService.getKeywordsWithCounts("a", 10);
-
-      // Then
-      assertThat(result).isEqualTo("aardvark|o||1\\nbear|o||2\\ncat|o||3\\n");
-    }
-
-    @Test
-    @DisplayName("should handle queries with whitespace")
-    void shouldHandleQueriesWithWhitespace() throws IOException {
-      // Given
-      List<TaxonomyNode> mockNodes = List.of(
-          new TaxonomyNode("bone marrow", 2, null, false)
-      );
-      when(taxonomySearcher.searchAllDepths("bone marrow", 10)).thenReturn(mockNodes);
-
-      // When
-      String result = autoCompleteService.getKeywordsWithCounts("bone marrow", 10);
-
-      // Then
-      assertThat(result).isEqualTo("bone marrow|o||2\\n");
-      verify(taxonomySearcher).searchAllDepths("bone marrow", 10);
-    }
-
-    @Test
-    @DisplayName("should handle special characters in query")
-    void shouldHandleSpecialCharactersInQuery() throws IOException {
-      // Given
-      List<TaxonomyNode> mockNodes = List.of(
-          new TaxonomyNode("CD8+ T cell", 5, null, false)
-      );
-      when(taxonomySearcher.searchAllDepths("CD8+", 10)).thenReturn(mockNodes);
-
-      // When
-      String result = autoCompleteService.getKeywordsWithCounts("CD8+", 10);
-
-      // Then
-      assertThat(result).isEqualTo("CD8+ T cell|o||5\\n");
-      verify(taxonomySearcher).searchAllDepths("CD8+", 10);
-    }
-
-    @Test
-    @DisplayName("should handle terms with both expandable and non-expandable results")
+    @DisplayName("should handle mixed expandable and non-expandable results")
     void shouldHandleMixedExpandableResults() throws IOException {
       // Given
-      List<TaxonomyNode> mockNodes = List.of(
-          new TaxonomyNode("cell", 10, "http://purl.obolibrary.org/obo/CL_0000000", true), // expandable
-          new TaxonomyNode("cellular process", 5, null, false) // not expandable
-      );
-      when(taxonomySearcher.searchAllDepths("cell", 10)).thenReturn(mockNodes);
+      List<EFOSearchHit> searchHits =
+          List.of(
+              new EFOSearchHit("1", "EFO:0001", "cell", null, null, List.of(), List.of()),
+              new EFOSearchHit(
+                  "2", "EFO:0002", "cellular process", null, null, List.of(), List.of()));
+      when(efoSearcher.searchAll(any(Query.class), any(), anyInt())).thenReturn(searchHits);
+      when(efoTermCountService.countIncludingDescendantsByEfoId("EFO:0001")).thenReturn(10L);
+      when(efoTermCountService.countIncludingDescendantsByEfoId("EFO:0002")).thenReturn(5L);
 
       // When
       String result = autoCompleteService.getKeywordsWithCounts("cell", 10);
 
       // Then
-      assertThat(result).isEqualTo(
-          "cell|o|http://purl.obolibrary.org/obo/CL_0000000|10\\n" +
-              "cellular process|o||5\\n"
-      );
-    }
-
-    @Test
-    @DisplayName("should handle very long term names")
-    void shouldHandleVeryLongTermNames() throws IOException {
-      // Given
-      String longTerm = "very ".repeat(50) + "long term";
-      List<TaxonomyNode> mockNodes = List.of(
-          new TaxonomyNode(longTerm, 1, null, false)
-      );
-      when(taxonomySearcher.searchAllDepths("very", 10)).thenReturn(mockNodes);
-
-      // When
-      String result = autoCompleteService.getKeywordsWithCounts("very", 10);
-
-      // Then
-      assertThat(result).startsWith(longTerm);
-      verify(taxonomySearcher).searchAllDepths("very", 10);
+      assertThat(result).isEqualTo("cell|o||10\ncellular process|o||5\n");
     }
 
     @Test
     @DisplayName("should handle zero count results")
     void shouldHandleZeroCountResults() throws IOException {
-      // Given - edge case where count is 0 (shouldn't normally happen but defensive)
-      List<TaxonomyNode> mockNodes = List.of(
-          new TaxonomyNode("rare term", 0, null, false)
-      );
-      when(taxonomySearcher.searchAllDepths("rare", 10)).thenReturn(mockNodes);
+      // Given
+      List<EFOSearchHit> searchHits =
+          List.of(new EFOSearchHit("1", "EFO:0001", "rare term", null, null, List.of(), List.of()));
+      when(efoSearcher.searchAll(any(Query.class), any(), anyInt())).thenReturn(searchHits);
+      when(efoTermCountService.countIncludingDescendantsByEfoId("EFO:0001")).thenReturn(0L);
 
       // When
       String result = autoCompleteService.getKeywordsWithCounts("rare", 10);
 
       // Then
-      assertThat(result).isEqualTo("rare term|o||0\\n");
+      assertThat(result).isEmpty();
     }
 
     @Test
-    @DisplayName("should handle high count results")
-    void shouldHandleHighCountResults() throws IOException {
+    @DisplayName("should resolve missing efoID from term matcher")
+    void shouldResolveMissingEfoIdFromTermMatcher() throws IOException {
       // Given
-      List<TaxonomyNode> mockNodes = List.of(
-          new TaxonomyNode("human", 999999, null, false)
-      );
-      when(taxonomySearcher.searchAllDepths("human", 10)).thenReturn(mockNodes);
+      List<EFOSearchHit> searchHits =
+          List.of(
+              new EFOSearchHit(
+                  "http://purl.obolibrary.org/obo/cl_0000588",
+                  null,
+                  "odontoclast",
+                  null,
+                  null,
+                  List.of(),
+                  List.of()));
+
+      when(efoSearcher.searchAll(any(Query.class), any(), anyInt())).thenReturn(searchHits);
+      when(efoTermCountService.countIncludingDescendantsByEfoId(
+              "http://purl.obolibrary.org/obo/cl_0000588"))
+          .thenReturn(7L);
 
       // When
-      String result = autoCompleteService.getKeywordsWithCounts("human", 10);
+      String result = autoCompleteService.getKeywordsWithCounts("odontoclast", 10);
 
       // Then
-      assertThat(result).isEqualTo("human|o||999999\\n");
+      assertThat(result).isEqualTo("odontoclast|o||7\n");
+      verifyNoInteractions(efoTermMatcher);
+    }
+
+    @Test
+    @DisplayName("should resolve efo id from term matcher when ids are missing")
+    void shouldResolveEfoIdFromTermMatcherWhenIdsMissing() throws IOException {
+      // Given
+      List<EFOSearchHit> searchHits =
+          List.of(new EFOSearchHit(null, null, "odontoclast", null, null, List.of(), List.of()));
+
+      when(efoSearcher.searchAll(any(Query.class), any(), anyInt())).thenReturn(searchHits);
+      when(efoTermMatcher.getEFOId("odontoclast"))
+          .thenReturn("http://purl.obolibrary.org/obo/cl_0000588");
+      when(efoTermCountService.countIncludingDescendantsByEfoId(
+              "http://purl.obolibrary.org/obo/cl_0000588"))
+          .thenReturn(7L);
+
+      // When
+      String result = autoCompleteService.getKeywordsWithCounts("odontoclast", 10);
+
+      // Then
+      assertThat(result).isEqualTo("odontoclast|o||7\n");
+      verify(efoTermMatcher).getEFOId("odontoclast");
+    }
+
+    @Test
+    @DisplayName("should skip hits when efo id cannot be resolved")
+    void shouldSkipHitsWhenEfoIdCannotBeResolved() throws IOException {
+      // Given
+      List<EFOSearchHit> searchHits =
+          List.of(new EFOSearchHit(null, null, "unknownterm", null, null, List.of(), List.of()));
+      when(efoSearcher.searchAll(any(Query.class), any(), anyInt())).thenReturn(searchHits);
+      when(efoTermMatcher.getEFOId("unknownterm")).thenReturn(null);
+
+      // When
+      String result = autoCompleteService.getKeywordsWithCounts("unknown", 10);
+
+      // Then
+      assertThat(result).isEmpty();
+      verify(efoTermMatcher).getEFOId("unknownterm");
+      verifyNoInteractions(efoTermCountService, efoHierarchyService);
     }
   }
 
@@ -308,468 +265,160 @@ class AutoCompleteServiceTest {
     @DisplayName("should return children for valid EFO ID")
     void shouldReturnChildrenForValidEfoId() throws IOException {
       // Given
-      String efoId = "http://purl.obolibrary.org/obo/CL_0000738";
-      List<TaxonomyNode> mockChildren = List.of(
-          new TaxonomyNode("osteoclast", 5, "http://purl.obolibrary.org/obo/CL_0000092", true),
-          new TaxonomyNode("macrophage", 3, null, false)
-      );
-      when(taxonomySearcher.getChildrenByEfoId(efoId, 20)).thenReturn(mockChildren);
+      String efoId = "EFO:0000738";
+      when(efoHierarchyService.getChildrenByEfoId(efoId))
+          .thenReturn(List.of("osteoclast", "macrophage"));
+
+      when(efoTermMatcher.getEFOId("osteoclast")).thenReturn("EFO:child1");
+      when(efoTermMatcher.getEFOId("macrophage")).thenReturn("EFO:child2");
+
+      when(efoTermCountService.countIncludingDescendantsByEfoId("EFO:child1")).thenReturn(5L);
+      when(efoTermCountService.countIncludingDescendantsByEfoId("EFO:child2")).thenReturn(3L);
+      when(efoHierarchyService.hasChildrenByEfoId("EFO:child1")).thenReturn(true);
+      when(efoHierarchyService.hasChildrenByEfoId("EFO:child2")).thenReturn(false);
 
       // When
       String result = autoCompleteService.getEfoTreeWithCounts(efoId, 20);
 
       // Then
-      assertThat(result).isEqualTo(
-          "osteoclast|o|http://purl.obolibrary.org/obo/CL_0000092|5\\n" +
-              "macrophage|o||3\\n"
-      );
-      verify(taxonomySearcher).getChildrenByEfoId(efoId, 20);
-      verify(taxonomySearcher).formatAsAutocompleteResponse(mockChildren);
+      assertThat(result).isEqualTo("osteoclast|o|EFO:child1|5\nmacrophage|o||3\n");
+      verify(efoHierarchyService).getChildrenByEfoId(efoId);
+      verify(efoTermMatcher).getEFOId("osteoclast");
+      verify(efoTermMatcher).getEFOId("macrophage");
+      verify(efoTermCountService).countIncludingDescendantsByEfoId("EFO:child1");
+      verify(efoTermCountService).countIncludingDescendantsByEfoId("EFO:child2");
     }
 
     @Test
     @DisplayName("should return empty string for leaf node")
-    void shouldReturnEmptyStringForLeafNode() throws IOException {
+    void shouldReturnEmptyStringForLeafNode() {
       // Given
-      String efoId = "http://purl.obolibrary.org/obo/CL_9999999";
-      when(taxonomySearcher.getChildrenByEfoId(efoId, 20)).thenReturn(List.of());
+      String efoId = "EFO:leaf";
+      when(efoHierarchyService.getChildrenByEfoId(efoId)).thenReturn(List.of());
 
       // When
       String result = autoCompleteService.getEfoTreeWithCounts(efoId, 20);
 
       // Then
       assertThat(result).isEmpty();
-      verify(taxonomySearcher).getChildrenByEfoId(efoId, 20);
+      verify(efoHierarchyService).getChildrenByEfoId(efoId);
+      verifyNoInteractions(efoSearcher, efoTermCountService, efoTermMatcher);
     }
 
     @Test
     @DisplayName("should return empty string for null EFO ID")
-    void shouldReturnEmptyStringForNullEfoId() throws IOException {
-      // When
-      String result = autoCompleteService.getEfoTreeWithCounts(null, 20);
-
-      // Then
-      assertThat(result).isEmpty();
-      verify(taxonomySearcher, never()).getChildrenByEfoId(anyString(), anyInt());
+    void shouldReturnEmptyStringForNullEfoId() {
+      assertThat(autoCompleteService.getEfoTreeWithCounts(null, 20)).isEmpty();
+      verifyNoInteractions(efoHierarchyService, efoSearcher, efoTermCountService, efoTermMatcher);
     }
 
     @Test
     @DisplayName("should return empty string for empty EFO ID")
-    void shouldReturnEmptyStringForEmptyEfoId() throws IOException {
-      // When
-      String result = autoCompleteService.getEfoTreeWithCounts("", 20);
-
-      // Then
-      assertThat(result).isEmpty();
-      verify(taxonomySearcher, never()).getChildrenByEfoId(anyString(), anyInt());
+    void shouldReturnEmptyStringForEmptyEfoId() {
+      assertThat(autoCompleteService.getEfoTreeWithCounts("", 20)).isEmpty();
+      verifyNoInteractions(efoHierarchyService, efoSearcher, efoTermCountService, efoTermMatcher);
     }
 
     @Test
     @DisplayName("should return empty string for whitespace-only EFO ID")
-    void shouldReturnEmptyStringForWhitespaceOnlyEfoId() throws IOException {
-      // When
-      String result = autoCompleteService.getEfoTreeWithCounts("   ", 20);
-
-      // Then
-      assertThat(result).isEmpty();
-      verify(taxonomySearcher, never()).getChildrenByEfoId(anyString(), anyInt());
+    void shouldReturnEmptyStringForWhitespaceOnlyEfoId() {
+      assertThat(autoCompleteService.getEfoTreeWithCounts("   ", 20)).isEmpty();
+      verifyNoInteractions(efoHierarchyService, efoSearcher, efoTermCountService, efoTermMatcher);
     }
 
     @Test
     @DisplayName("should use default limit when limit is zero")
     void shouldUseDefaultLimitWhenZero() throws IOException {
       // Given
-      String efoId = "http://purl.obolibrary.org/obo/CL_0000000";
-      List<TaxonomyNode> mockChildren = List.of(
-          new TaxonomyNode("child", 1, null, false)
-      );
-      when(taxonomySearcher.getChildrenByEfoId(efoId, 500)).thenReturn(mockChildren);
+      String efoId = "EFO:0000000";
+      when(efoHierarchyService.getChildrenByEfoId(efoId)).thenReturn(List.of("child"));
+      when(efoTermMatcher.getEFOId("child")).thenReturn("EFO:child");
+      when(efoTermCountService.countIncludingDescendantsByEfoId("EFO:child")).thenReturn(1L);
+      when(efoHierarchyService.hasChildrenByEfoId("EFO:child")).thenReturn(false);
 
       // When
       autoCompleteService.getEfoTreeWithCounts(efoId, 0);
 
       // Then
-      verify(taxonomySearcher).getChildrenByEfoId(efoId, 500);
+      verify(efoHierarchyService).getChildrenByEfoId(efoId);
+      verify(efoTermMatcher).getEFOId("child");
     }
 
     @Test
     @DisplayName("should use default limit when limit is negative")
     void shouldUseDefaultLimitWhenNegative() throws IOException {
       // Given
-      String efoId = "http://purl.obolibrary.org/obo/CL_0000000";
-      List<TaxonomyNode> mockChildren = List.of(
-          new TaxonomyNode("child", 1, null, false)
-      );
-      when(taxonomySearcher.getChildrenByEfoId(efoId, 500)).thenReturn(mockChildren);
+      String efoId = "EFO:0000000";
+      when(efoHierarchyService.getChildrenByEfoId(efoId)).thenReturn(List.of("child"));
+      when(efoTermMatcher.getEFOId("child")).thenReturn("EFO:child");
+      when(efoTermCountService.countIncludingDescendantsByEfoId("EFO:child")).thenReturn(1L);
+      when(efoHierarchyService.hasChildrenByEfoId("EFO:child")).thenReturn(false);
 
       // When
       autoCompleteService.getEfoTreeWithCounts(efoId, -5);
 
       // Then
-      verify(taxonomySearcher).getChildrenByEfoId(efoId, 500);
-    }
-
-    @Test
-    @DisplayName("should use provided limit when positive")
-    void shouldUseProvidedLimitWhenPositive() throws IOException {
-      // Given
-      String efoId = "http://purl.obolibrary.org/obo/CL_0000000";
-      List<TaxonomyNode> mockChildren = List.of(
-          new TaxonomyNode("child", 1, null, false)
-      );
-      when(taxonomySearcher.getChildrenByEfoId(efoId, 10)).thenReturn(mockChildren);
-
-      // When
-      autoCompleteService.getEfoTreeWithCounts(efoId, 10);
-
-      // Then
-      verify(taxonomySearcher).getChildrenByEfoId(efoId, 10);
+      verify(efoHierarchyService).getChildrenByEfoId(efoId);
     }
 
     @Test
     @DisplayName("should return empty string when IOException occurs")
     void shouldReturnEmptyStringOnIOException() throws IOException {
       // Given
-      String efoId = "http://purl.obolibrary.org/obo/CL_0000000";
-      when(taxonomySearcher.getChildrenByEfoId(efoId, 20))
-          .thenThrow(new IOException("Index error"));
+      String efoId = "EFO:0000000";
+      when(efoHierarchyService.getChildrenByEfoId(efoId))
+          .thenThrow(new RuntimeException("Index error"));
 
       // When
       String result = autoCompleteService.getEfoTreeWithCounts(efoId, 20);
 
       // Then
       assertThat(result).isEmpty();
-      verify(taxonomySearcher).getChildrenByEfoId(efoId, 20);
-    }
-
-    @Test
-    @DisplayName("should return empty string for non-existent EFO ID")
-    void shouldReturnEmptyStringForNonExistentEfoId() throws IOException {
-      // Given
-      String efoId = "http://purl.obolibrary.org/obo/CL_9999999";
-      when(taxonomySearcher.getChildrenByEfoId(efoId, 20)).thenReturn(List.of());
-
-      // When
-      String result = autoCompleteService.getEfoTreeWithCounts(efoId, 20);
-
-      // Then
-      assertThat(result).isEmpty();
-      verify(taxonomySearcher).getChildrenByEfoId(efoId, 20);
-    }
-
-    @Test
-    @DisplayName("should preserve children order")
-    void shouldPreserveChildrenOrder() throws IOException {
-      // Given
-      String efoId = "http://purl.obolibrary.org/obo/CL_0000000";
-      List<TaxonomyNode> mockChildren = List.of(
-          new TaxonomyNode("alpha cell", 1, null, false),
-          new TaxonomyNode("beta cell", 2, null, false),
-          new TaxonomyNode("gamma cell", 3, null, false)
-      );
-      when(taxonomySearcher.getChildrenByEfoId(efoId, 20)).thenReturn(mockChildren);
-
-      // When
-      String result = autoCompleteService.getEfoTreeWithCounts(efoId, 20);
-
-      // Then
-      assertThat(result).isEqualTo("alpha cell|o||1\\nbeta cell|o||2\\ngamma cell|o||3\\n");
-    }
-
-    @Test
-    @DisplayName("should handle URL-encoded EFO IDs")
-    void shouldHandleUrlEncodedEfoIds() throws IOException {
-      // Given - URL-decoded form
-      String efoId = "http://purl.obolibrary.org/obo/cl_0000000";
-      List<TaxonomyNode> mockChildren = List.of(
-          new TaxonomyNode("child", 1, null, false)
-      );
-      when(taxonomySearcher.getChildrenByEfoId(efoId, 20)).thenReturn(mockChildren);
-
-      // When
-      String result = autoCompleteService.getEfoTreeWithCounts(efoId, 20);
-
-      // Then
-      assertThat(result).isEqualTo("child|o||1\\n");
-      verify(taxonomySearcher).getChildrenByEfoId(efoId, 20);
-    }
-
-    @Test
-    @DisplayName("should handle children with special characters in names")
-    void shouldHandleChildrenWithSpecialCharacters() throws IOException {
-      // Given
-      String efoId = "http://purl.obolibrary.org/obo/CL_0000000";
-      List<TaxonomyNode> mockChildren = List.of(
-          new TaxonomyNode("CD4+ T cell", 10, null, false),
-          new TaxonomyNode("CD8+ T cell", 8, null, false),
-          new TaxonomyNode("NK/T cell", 5, null, false)
-      );
-      when(taxonomySearcher.getChildrenByEfoId(efoId, 20)).thenReturn(mockChildren);
-
-      // When
-      String result = autoCompleteService.getEfoTreeWithCounts(efoId, 20);
-
-      // Then
-      assertThat(result).contains("CD4+ T cell|o||10\\n");
-      assertThat(result).contains("CD8+ T cell|o||8\\n");
-      assertThat(result).contains("NK/T cell|o||5\\n");
-    }
-
-    @Test
-    @DisplayName("should handle large number of children")
-    void shouldHandleLargeNumberOfChildren() throws IOException {
-      // Given
-      String efoId = "http://purl.obolibrary.org/obo/CL_0000000";
-      List<TaxonomyNode> mockChildren = new java.util.ArrayList<>();
-      for (int i = 0; i < 100; i++) {
-        mockChildren.add(new TaxonomyNode("child_" + i, i, null, false));
-      }
-      when(taxonomySearcher.getChildrenByEfoId(efoId, 20)).thenReturn(mockChildren);
-
-      // When
-      String result = autoCompleteService.getEfoTreeWithCounts(efoId, 20);
-
-      // Then
-      assertThat(result.split("\\\\n")).hasSize(100);
-      verify(taxonomySearcher).getChildrenByEfoId(efoId, 20);
     }
   }
 
   @Nested
-  @DisplayName("Integration scenarios")
-  class IntegrationScenarios {
+  @DisplayName("getKeywords()")
+  class GetKeywords {
 
     @Test
-    @DisplayName("should support search then expand workflow")
-    void shouldSupportSearchThenExpandWorkflow() throws IOException {
-      // Given - User searches for "cell"
-      List<TaxonomyNode> searchResults = List.of(
-          new TaxonomyNode("cell type", 10, "http://www.ebi.ac.uk/efo/efo_0000324", true)
-      );
-      when(taxonomySearcher.searchAllDepths("cell", 10)).thenReturn(searchResults);
+    @DisplayName("should return formatted ontology and alternative terms")
+    void shouldReturnFormattedOntologyAndAlternativeTerms() throws IOException {
+      // Force filtering
+      ReflectionTestUtils.setField(autoCompleteService, "filterByIndex", true);
 
-      // When - User performs search
-      String searchResult = autoCompleteService.getKeywordsWithCounts("cell", 10);
+      // Ontology hit (TERM field)
+      EFOSearchHit termHit =
+          new EFOSearchHit("1", "EFO:0001", "cell type", null, null, List.of(), List.of());
 
-      // Then - User gets "cell type" with expand button
-      assertThat(searchResult).isEqualTo("cell type|o|http://www.ebi.ac.uk/efo/efo_0000324|10\\n");
+      // Alternative hit (ALTERNATIVE_TERMS field)
+      EFOSearchHit altHit =
+          new EFOSearchHit("2", null, "cellular", null, "cellular", List.of(), List.of());
 
-      // Given - User expands "cell type" to see children
-      String efoId = "http://www.ebi.ac.uk/efo/efo_0000324";
-      List<TaxonomyNode> children = List.of(
-          new TaxonomyNode("hematopoietic cell", 5, "http://purl.obolibrary.org/obo/CL_0000988", true),
-          new TaxonomyNode("epithelial cell", 3, null, false)
-      );
-      when(taxonomySearcher.getChildrenByEfoId(efoId, 20)).thenReturn(children);
+      // Stubbing order: 1st TERM search → 2nd ALTERNATIVE_TERMS search
+      when(efoSearcher.searchAll(any(Query.class), any(Sort.class), anyInt()))
+          .thenReturn(List.of(termHit)) // TERM: 1 hit < limit*FETCH → alternatives
+          .thenReturn(List.of(altHit)); // ALTERNATIVE_TERMS
 
-      // When - User requests children
-      String treeResult = autoCompleteService.getEfoTreeWithCounts(efoId, 20);
-
-      // Then - User gets children with correct expand indicators
-      assertThat(treeResult).isEqualTo(
-          "hematopoietic cell|o|http://purl.obolibrary.org/obo/CL_0000988|5\\n" +
-              "epithelial cell|o||3\\n"
-      );
-
-      verify(taxonomySearcher).searchAllDepths("cell", 10);
-      verify(taxonomySearcher).getChildrenByEfoId(efoId, 20);
-    }
-
-    @Test
-    @DisplayName("should handle errors gracefully without propagating exceptions")
-    void shouldHandleErrorsGracefully() throws IOException {
-      // Given
-      when(taxonomySearcher.searchAllDepths(anyString(), anyInt()))
-          .thenThrow(new IOException("Index corrupted"));
-      when(taxonomySearcher.getChildrenByEfoId(anyString(), anyInt()))
-          .thenThrow(new IOException("Index corrupted"));
-
-      // When - Both methods should handle exceptions gracefully
-      String searchResult = autoCompleteService.getKeywordsWithCounts("test", 10);
-      String treeResult = autoCompleteService.getEfoTreeWithCounts("http://test", 20);
-
-      // Then - Both return empty strings without throwing
-      assertThat(searchResult).isEmpty();
-      assertThat(treeResult).isEmpty();
-    }
-
-    @Test
-    @DisplayName("should handle multi-level tree expansion")
-    void shouldHandleMultiLevelTreeExpansion() throws IOException {
-      // Level 1: Search returns "cell type"
-      List<TaxonomyNode> level1 = List.of(
-          new TaxonomyNode("cell type", 100, "http://www.ebi.ac.uk/efo/efo_0000324", true)
-      );
-      when(taxonomySearcher.searchAllDepths("cell", 10)).thenReturn(level1);
-
-      // Level 2: Expand "cell type" returns "hematopoietic cell"
-      List<TaxonomyNode> level2 = List.of(
-          new TaxonomyNode("hematopoietic cell", 50, "http://purl.obolibrary.org/obo/CL_0000988", true)
-      );
-      when(taxonomySearcher.getChildrenByEfoId("http://www.ebi.ac.uk/efo/efo_0000324", 20))
-          .thenReturn(level2);
-
-      // Level 3: Expand "hematopoietic cell" returns "leukocyte"
-      List<TaxonomyNode> level3 = List.of(
-          new TaxonomyNode("leukocyte", 30, "http://purl.obolibrary.org/obo/CL_0000738", true)
-      );
-      when(taxonomySearcher.getChildrenByEfoId("http://purl.obolibrary.org/obo/CL_0000988", 20))
-          .thenReturn(level3);
-
-      // Execute workflow
-      String search = autoCompleteService.getKeywordsWithCounts("cell", 10);
-      String expand1 = autoCompleteService.getEfoTreeWithCounts("http://www.ebi.ac.uk/efo/efo_0000324", 20);
-      String expand2 = autoCompleteService.getEfoTreeWithCounts("http://purl.obolibrary.org/obo/CL_0000988", 20);
-
-      // Verify
-      assertThat(search).contains("cell type");
-      assertThat(expand1).contains("hematopoietic cell");
-      assertThat(expand2).contains("leukocyte");
-    }
-
-    @Test
-    @DisplayName("should handle empty results at different levels")
-    void shouldHandleEmptyResultsAtDifferentLevels() throws IOException {
-      // Given - Search returns results but some nodes have no children
-      List<TaxonomyNode> searchResults = List.of(
-          new TaxonomyNode("rare cell", 1, "http://example.org/rare", false)
-      );
-      when(taxonomySearcher.searchAllDepths("rare", 10)).thenReturn(searchResults);
-      when(taxonomySearcher.getChildrenByEfoId("http://example.org/rare", 20)).thenReturn(List.of());
+      // Filtering calls (filterByIndex=true)
+      when(efoSearcher.getTermFrequency("cell type")).thenReturn(2); // termHit.term()
+      when(efoSearcher.getTermFrequency("cellular")).thenReturn(1); // altHit.altTerm()
 
       // When
-      String searchResult = autoCompleteService.getKeywordsWithCounts("rare", 10);
-      String treeResult = autoCompleteService.getEfoTreeWithCounts("http://example.org/rare", 20);
+      String result = autoCompleteService.getKeywords("cell", 10);
 
       // Then
-      assertThat(searchResult).isEqualTo("rare cell|o||1\\n"); // No expand button (empty efoId)
-      assertThat(treeResult).isEmpty(); // No children
+      assertThat(result.trim()).isEqualTo("cell type|o|\ncellular|t|content");
+      verify(efoSearcher, times(2)).searchAll(any(Query.class), any(Sort.class), anyInt());
+      verify(efoSearcher).getTermFrequency("cell type");
+      verify(efoSearcher).getTermFrequency("cellular");
     }
 
     @Test
-    @DisplayName("should handle concurrent access patterns")
-    void shouldHandleConcurrentAccessPatterns() throws IOException {
-      // Given - Simulate concurrent requests with different queries
-      List<TaxonomyNode> results1 = List.of(new TaxonomyNode("term1", 1, null, false));
-      List<TaxonomyNode> results2 = List.of(new TaxonomyNode("term2", 2, null, false));
-      List<TaxonomyNode> results3 = List.of(new TaxonomyNode("term3", 3, null, false));
-
-      when(taxonomySearcher.searchAllDepths("query1", 10)).thenReturn(results1);
-      when(taxonomySearcher.searchAllDepths("query2", 10)).thenReturn(results2);
-      when(taxonomySearcher.searchAllDepths("query3", 10)).thenReturn(results3);
-
-      // When - Execute concurrent-style calls
-      String result1 = autoCompleteService.getKeywordsWithCounts("query1", 10);
-      String result2 = autoCompleteService.getKeywordsWithCounts("query2", 10);
-      String result3 = autoCompleteService.getKeywordsWithCounts("query3", 10);
-
-      // Then - Each should return correct results
-      assertThat(result1).contains("term1|o||1");
-      assertThat(result2).contains("term2|o||2");
-      assertThat(result3).contains("term3|o||3");
-
-      verify(taxonomySearcher).searchAllDepths("query1", 10);
-      verify(taxonomySearcher).searchAllDepths("query2", 10);
-      verify(taxonomySearcher).searchAllDepths("query3", 10);
-    }
-  }
-
-  @Nested
-  @DisplayName("Edge cases and boundary conditions")
-  class EdgeCasesAndBoundaryConditions {
-
-    @Test
-    @DisplayName("should handle limit of 1")
-    void shouldHandleLimitOfOne() throws IOException {
-      // Given
-      List<TaxonomyNode> mockNodes = List.of(
-          new TaxonomyNode("first", 1, null, false)
-      );
-      when(taxonomySearcher.searchAllDepths("test", 1)).thenReturn(mockNodes);
-
-      // When
-      String result = autoCompleteService.getKeywordsWithCounts("test", 1);
-
-      // Then
-      assertThat(result).isEqualTo("first|o||1\\n");
-      verify(taxonomySearcher).searchAllDepths("test", 1);
-    }
-
-    @Test
-    @DisplayName("should handle exactly MAX_LIMIT results")
-    void shouldHandleExactlyMaxLimitResults() throws IOException {
-      // Given
-      List<TaxonomyNode> mockNodes = new java.util.ArrayList<>();
-      for (int i = 0; i < 200; i++) {
-        mockNodes.add(new TaxonomyNode("term" + i, i, null, false));
-      }
-      when(taxonomySearcher.searchAllDepths("test", 200)).thenReturn(mockNodes);
-
-      // When
-      String result = autoCompleteService.getKeywordsWithCounts("test", 200);
-
-      // Then
-      assertThat(result.split("\\\\n")).hasSize(200);
-    }
-
-    @Test
-    @DisplayName("should handle EFO IDs with different formats")
-    void shouldHandleEfoIdsWithDifferentFormats() throws IOException {
-      // Given - Different EFO ID formats
-      String[] efoIds = {
-          "http://purl.obolibrary.org/obo/CL_0000000",
-          "http://www.ebi.ac.uk/efo/EFO_0000001",
-          "http://purl.obolibrary.org/obo/GO_0008150"
-      };
-
-      for (String efoId : efoIds) {
-        List<TaxonomyNode> mockChildren = List.of(
-            new TaxonomyNode("child", 1, null, false)
-        );
-        when(taxonomySearcher.getChildrenByEfoId(efoId, 20)).thenReturn(mockChildren);
-      }
-
-      // When/Then - Each format should work
-      for (String efoId : efoIds) {
-        String result = autoCompleteService.getEfoTreeWithCounts(efoId, 20);
-        assertThat(result).isEqualTo("child|o||1\\n");
-      }
-    }
-
-    @Test
-    @DisplayName("should handle terms with unicode characters")
-    void shouldHandleTermsWithUnicodeCharacters() throws IOException {
-      // Given
-      List<TaxonomyNode> mockNodes = List.of(
-          new TaxonomyNode("α-cell", 5, null, false),
-          new TaxonomyNode("β-cell", 3, null, false),
-          new TaxonomyNode("γδ T cell", 2, null, false)
-      );
-      when(taxonomySearcher.searchAllDepths("α", 10)).thenReturn(mockNodes);
-
-      // When
-      String result = autoCompleteService.getKeywordsWithCounts("α", 10);
-
-      // Then
-      assertThat(result).contains("α-cell");
-      assertThat(result).contains("β-cell");
-      assertThat(result).contains("γδ T cell");
-    }
-
-    @Test
-    @DisplayName("should handle null efoId in TaxonomyNode")
-    void shouldHandleNullEfoIdInNode() throws IOException {
-      // Given
-      List<TaxonomyNode> mockNodes = List.of(
-          new TaxonomyNode("term", 1, null, false) // null efoId
-      );
-      when(taxonomySearcher.searchAllDepths("test", 10)).thenReturn(mockNodes);
-
-      // When
-      String result = autoCompleteService.getKeywordsWithCounts("test", 10);
-
-      // Then - Should not crash, should format with empty efoId
-      assertThat(result).isEqualTo("term|o||1\\n");
+    @DisplayName("should return empty string for null query")
+    void shouldReturnEmptyStringForNullQuery() {
+      assertThat(autoCompleteService.getKeywords(null, 10)).isEmpty();
+      verifyNoInteractions(efoSearcher, efoTermCountService, efoHierarchyService, efoTermMatcher);
     }
   }
 }

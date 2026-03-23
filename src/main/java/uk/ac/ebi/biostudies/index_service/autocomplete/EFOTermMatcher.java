@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -14,17 +13,12 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.lucene.document.Document;
-
-import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
-
 import org.apache.lucene.index.MultiBits;
 import org.apache.lucene.index.StoredFields;
-
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.util.Bits;
 import org.springframework.stereotype.Component;
-
 import uk.ac.ebi.biostudies.index_service.index.IndexName;
 import uk.ac.ebi.biostudies.index_service.index.efo.EFOField;
 import uk.ac.ebi.biostudies.index_service.index.management.IndexManager;
@@ -32,8 +26,8 @@ import uk.ac.ebi.biostudies.index_service.index.management.IndexManager;
 /**
  * Provides fast EFO term matching and hierarchy resolution for autocomplete and indexing.
  *
- * <p>Loads all EFO terms and their hierarchical relationships into memory at startup by querying the
- * EFO Lucene index. Matching is token-based and uses a trie built from normalized labels.
+ * <p>Loads all EFO terms and their hierarchical relationships into memory at startup by querying
+ * the EFO Lucene index. Matching is token-based and uses a trie built from normalized labels.
  */
 @Slf4j
 @Component
@@ -48,6 +42,9 @@ public class EFOTermMatcher {
 
   /** Maps lowercase terms to their ancestor chains (root to immediate parent). */
   private Map<String, List<String>> termToAncestorsCache;
+
+  /** Maps EFO IDs to their direct child IDs. */
+  private Map<String, Set<String>> idToChildIdsCache;
 
   /** Maps EFO IDs to their primary terms in original case. */
   private Map<String, String> idToTermCache;
@@ -100,6 +97,7 @@ public class EFOTermMatcher {
     idToTermCache = new ConcurrentHashMap<>();
     allTermsLowercase = ConcurrentHashMap.newKeySet();
     Map<String, List<String>> nodeParents = new ConcurrentHashMap<>();
+    idToChildIdsCache = new ConcurrentHashMap<>();
 
     int primaryTermCount = 0;
     int altTermCount = 0;
@@ -124,7 +122,10 @@ public class EFOTermMatcher {
 
         Document doc = storedFields.document(docId);
 
-        String efoId = doc.get(EFOField.ID.getFieldName());
+        String efoId = doc.get(EFOField.EFO_ID.getFieldName());
+        if (efoId == null || efoId.isBlank()) {
+          efoId = doc.get(EFOField.ID.getFieldName());
+        }
         String term = doc.get(EFOField.TERM.getFieldName());
 
         if (term != null && efoId != null) {
@@ -137,6 +138,15 @@ public class EFOTermMatcher {
           String[] parents = doc.getValues(EFOField.PARENT.getFieldName());
           if (parents != null && parents.length > 0) {
             nodeParents.put(efoId, Arrays.asList(parents));
+
+            for (String parentId : parents) {
+              if (parentId == null || parentId.isBlank()) {
+                continue;
+              }
+              idToChildIdsCache
+                  .computeIfAbsent(parentId, ignored -> ConcurrentHashMap.newKeySet())
+                  .add(efoId);
+            }
           }
         }
 
@@ -172,6 +182,19 @@ public class EFOTermMatcher {
     }
 
     buildAncestorChainsFromParentMap(nodeParents);
+  }
+
+  /**
+   * Returns direct child IDs for an EFO ID.
+   *
+   * @param efoId EFO identifier
+   * @return direct child IDs, or empty set if none
+   */
+  public Set<String> getChildIds(String efoId) {
+    if (efoId == null || efoId.isBlank() || idToChildIdsCache == null) {
+      return Collections.emptySet();
+    }
+    return idToChildIdsCache.getOrDefault(efoId, Collections.emptySet());
   }
 
   private void buildTokenTrie() {
@@ -367,7 +390,8 @@ public class EFOTermMatcher {
     int terms = allTermsLowercase != null ? allTermsLowercase.size() : 0;
     int withHierarchy = termToAncestorsCache != null ? termToAncestorsCache.size() : 0;
     int nodes = idToTermCache != null ? idToTermCache.size() : 0;
-    return String.format("EFOTermMatcher[terms=%d, withHierarchy=%d, nodes=%d]", terms, withHierarchy, nodes);
+    return String.format(
+        "EFOTermMatcher[terms=%d, withHierarchy=%d, nodes=%d]", terms, withHierarchy, nodes);
   }
 
   private List<String> computeAncestorsWithMemoization(

@@ -3,22 +3,20 @@ package uk.ac.ebi.biostudies.index_service.autocomplete;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.lucene.analysis.core.KeywordAnalyzer;
-import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.TermQuery;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import uk.ac.ebi.biostudies.index_service.index.efo.EFOField;
 import uk.ac.ebi.biostudies.index_service.search.searchers.EFOSearchHit;
 import uk.ac.ebi.biostudies.index_service.search.searchers.EFOSearcher;
 import uk.ac.ebi.biostudies.index_service.search.taxonomy.TaxonomyNode;
-import uk.ac.ebi.biostudies.index_service.search.taxonomy.TaxonomySearcher;
 
 /**
  * Service providing autocomplete functionality by searching EFO (Experimental Factor Ontology)
@@ -26,9 +24,10 @@ import uk.ac.ebi.biostudies.index_service.search.taxonomy.TaxonomySearcher;
  * index.
  *
  * <p>This service supports two autocomplete modes:
+ *
  * <ul>
  *   <li><b>Standard mode</b> - Searches EFO ontology structure without counts
- *   <li><b>Count mode</b> - Searches submission facets with real-time submission counts
+ *   <li><b>Count mode</b> - Searches submission index with descendant-inclusive counts
  * </ul>
  */
 @Slf4j
@@ -49,14 +48,24 @@ public class AutoCompleteService {
   private static final int FETCH_MULTIPLIER = 3;
 
   private final EFOSearcher efoSearcher;
-  private final TaxonomySearcher taxonomySearcher;
+  private final EFOHierarchyService efoHierarchyService;
+  private final EFOTermCountService efoTermCountService;
+  private final EFOTermMatcher efoTermMatcher;
 
   @Value("${autocomplete.filter-by-index:true}")
   private boolean filterByIndex;
 
-  public AutoCompleteService(EFOSearcher efoSearcher, TaxonomySearcher taxonomySearcher) {
-    this.efoSearcher = efoSearcher;
-    this.taxonomySearcher = taxonomySearcher;
+  public AutoCompleteService(
+      EFOSearcher efoSearcher,
+      EFOHierarchyService efoHierarchyService,
+      EFOTermCountService efoTermCountService,
+      EFOTermMatcher efoTermMatcher) {
+    this.efoSearcher = Objects.requireNonNull(efoSearcher, "efoSearcher must not be null");
+    this.efoHierarchyService =
+        Objects.requireNonNull(efoHierarchyService, "efoHierarchyService must not be null");
+    this.efoTermCountService =
+        Objects.requireNonNull(efoTermCountService, "efoTermCountService must not be null");
+    this.efoTermMatcher = Objects.requireNonNull(efoTermMatcher, "efoTermMatcher must not be null");
   }
 
   /**
@@ -79,7 +88,8 @@ public class AutoCompleteService {
    *
    * @param query the search term to match against EFO terms (must not be null)
    * @param limit maximum number of results (capped at {@value MAX_LIMIT})
-   * @return formatted autocomplete suggestions, one per line; empty string if query is null/empty or on error
+   * @return formatted autocomplete suggestions, one per line; empty string if query is null/empty
+   *     or on error
    */
   public String getKeywords(String query, int limit) {
     if (query == null || query.trim().isEmpty()) {
@@ -101,7 +111,6 @@ public class AutoCompleteService {
 
       log.debug("Executing autocomplete query: {}", luceneQuery);
 
-      // Fetch extra results to account for filtering
       int fetchLimit = Math.min(limit * FETCH_MULTIPLIER, MAX_LIMIT);
 
       List<EFOSearchHit> efoSearchHits =
@@ -112,7 +121,6 @@ public class AutoCompleteService {
 
       log.debug("Fetched {} EFO term results before filtering", efoSearchHits.size());
 
-      // Filter primary results by index presence
       List<EFOSearchHit> filteredTerms;
       if (filterByIndex) {
         filteredTerms = filterByIndexPresence(efoSearchHits, limit, EFOField.TERM);
@@ -121,7 +129,6 @@ public class AutoCompleteService {
         filteredTerms = efoSearchHits.subList(0, Math.min(limit, efoSearchHits.size()));
       }
 
-      // If we don't have enough results, fetch alternative terms to fill the gap
       List<EFOSearchHit> filteredAlternatives = List.of();
       if (filteredTerms.size() < limit) {
         int remainingLimit = limit - filteredTerms.size();
@@ -191,7 +198,6 @@ public class AutoCompleteService {
     }
 
     try {
-
       List<EFOSearchHit> filteredHits = new ArrayList<>();
       int checkedCount = 0;
       int filteredCount = 0;
@@ -199,7 +205,6 @@ public class AutoCompleteService {
       for (EFOSearchHit hit : efoSearchHits) {
         checkedCount++;
 
-        // Get the actual term value to check
         String termToCheck = getTermForFiltering(hit, sourceField);
         if (termToCheck == null || termToCheck.trim().isEmpty()) {
           log.trace("Skipping hit with null/empty term: {}", hit);
@@ -207,14 +212,11 @@ public class AutoCompleteService {
           continue;
         }
 
-        // Check if term exists in the index with at least 1 document
         int docFreq = efoSearcher.getTermFrequency(termToCheck);
-
         if (docFreq > 0) {
           filteredHits.add(hit);
           log.trace("Term '{}' exists in {} documents", termToCheck, docFreq);
 
-          // Stop once we have enough results
           if (filteredHits.size() >= limit) {
             break;
           }
@@ -252,10 +254,8 @@ public class AutoCompleteService {
    */
   private String getTermForFiltering(EFOSearchHit hit, EFOField sourceField) {
     if (sourceField == EFOField.TERM) {
-      // Primary terms: use the term field
       return hit.term();
     } else if (sourceField == EFOField.ALTERNATIVE_TERMS) {
-      // Alternative terms: use the altTerm field
       return hit.altTerm();
     }
     return null;
@@ -281,21 +281,16 @@ public class AutoCompleteService {
       List<EFOSearchHit> ontologyTerms, List<EFOSearchHit> alternativeTerms) {
     StringBuilder resultStr = new StringBuilder();
 
-    // Format primary ontology terms
     for (EFOSearchHit hit : ontologyTerms) {
       resultStr.append(hit.term()).append("|o|");
-
-      // Include URI only if term has children (is expandable)
       if (hit.child() != null) {
         resultStr.append(hit.id());
       }
-
-      resultStr.append("\\n");
+      resultStr.append("\n");
     }
 
-    // Format alternative terms
     for (EFOSearchHit hit : alternativeTerms) {
-      resultStr.append(hit.term()).append("|t|content\\n");
+      resultStr.append(hit.term()).append("|t|content\n");
     }
 
     return resultStr.toString();
@@ -316,8 +311,6 @@ public class AutoCompleteService {
    * @return the modified query with wildcard suffix if applicable
    */
   private String modifyQuery(String query) {
-    // Don't modify if query already contains special operators
-    // Note: Boolean operators are case-sensitive (must be uppercase per Lucene syntax)
     if (query.contains("\"")
         || query.contains("AND")
         || query.contains("OR")
@@ -325,7 +318,6 @@ public class AutoCompleteService {
       return query;
     }
 
-    // Add wildcard for prefix matching
     return query + "*";
   }
 
@@ -336,10 +328,6 @@ public class AutoCompleteService {
    * hierarchical browsing of the ontology. Results are NOT filtered by submission index presence to
    * maintain the complete ontology structure - parent terms may not appear directly in submissions
    * even when their children do.
-   *
-   * <p>Example: "acute leukemia" might have 0 direct mentions but contain children like "acute
-   * lymphoblastic leukemia" that appear in many submissions. Filtering would break the navigation
-   * path to those results.
    *
    * @param efoId the EFO term identifier (URI) whose children to retrieve
    * @return pipe-delimited plain text with child terms in alphabetical order, format: {@code
@@ -352,16 +340,27 @@ public class AutoCompleteService {
     }
 
     try {
-      Query query = new TermQuery(new Term(EFOField.PARENT.getFieldName(), efoId.toLowerCase()));
+      List<String> childTerms = efoHierarchyService.getChildrenByEfoId(efoId);
+      if (childTerms.isEmpty()) {
+        log.debug("No child nodes found for EFO term: {}", efoId);
+        return "";
+      }
 
-      // Sort alphabetically for better UX
-      Sort sort = new Sort(new SortField(EFOField.TERM.getFieldName(), SortField.Type.STRING, false));
+      List<EFOSearchHit> children = new ArrayList<>(childTerms.size());
+      String parentTerm = efoHierarchyService.getTerm(efoId);
+      String parentLabel = parentTerm != null ? parentTerm : efoId;
 
-      List<EFOSearchHit> children = efoSearcher.searchAll(query, sort, MAX_TREE_LIMIT);
+      for (String childTerm : childTerms) {
+        if (childTerm == null || childTerm.isBlank()) {
+          continue;
+        }
+
+        String childId = efoTermMatcher.getEFOId(childTerm);
+        children.add(
+            new EFOSearchHit(null, childId, childTerm, parentLabel, null, List.of(), List.of()));
+      }
 
       log.debug("Fetched {} child nodes for EFO term: {}", children.size(), efoId);
-
-      // No filtering applied - show complete ontology structure for navigation
       return formatAutocompleteResponse(children, List.of());
     } catch (Exception e) {
       log.error("Error fetching EFO tree for EFO ID '{}': {}", efoId, e.getMessage(), e);
@@ -370,16 +369,34 @@ public class AutoCompleteService {
   }
 
   /**
-   * Searches for EFO terms with hierarchical counts from submission facets.
+   * Resolves an EFO ID for a search hit.
    *
-   * <p>This method provides autocomplete suggestions with submission counts, enabling the UI to
-   * display result counts next to each suggestion (e.g., "phagocyte (150)").
+   * @param hit the search hit
+   * @return EFO ID if available, otherwise resolved from the term
+   */
+  private String resolveEfoId(EFOSearchHit hit) {
+    if (hit == null) {
+      return null;
+    }
+    if (hit.efoID() != null && !hit.efoID().isBlank()) {
+      return hit.efoID();
+    }
+    if (hit.id() != null && !hit.id().isBlank()) {
+      return hit.id();
+    }
+    return efoTermMatcher.getEFOId(hit.term());
+  }
+
+  /**
+   * Searches for EFO terms with descendant-inclusive counts.
    *
-   * <p>Only returns terms that actually appear in indexed submissions with their exact counts.
+   * <p>Autocomplete remains label-based, but counts now include the term and all descendants in the
+   * ontology hierarchy.
    *
    * @param query the search term prefix
    * @param limit maximum number of results (capped at {@value MAX_LIMIT})
-   * @return formatted autocomplete response with counts; empty string if query is null/empty or on error
+   * @return formatted autocomplete response with counts; empty string if query is null/empty or on
+   *     error
    */
   public String getKeywordsWithCounts(String query, int limit) {
     if (query == null || query.trim().isEmpty()) {
@@ -392,25 +409,94 @@ public class AutoCompleteService {
     }
 
     try {
-      List<TaxonomyNode> nodes = taxonomySearcher.searchAllDepths(query, limit);
-      log.debug("EFO search completed: {} results, {} total hits", nodes.size(), nodes.size());
-      return taxonomySearcher.formatAsAutocompleteResponse(nodes);
+      String modifiedQuery = modifyQuery(query);
+      QueryParser parser = new QueryParser(EFOField.TERM.getFieldName(), new KeywordAnalyzer());
+      Query luceneQuery = parser.parse(modifiedQuery);
 
-    } catch (IOException e) {
+      int fetchLimit = Math.min(limit * FETCH_MULTIPLIER, MAX_LIMIT);
+      List<EFOSearchHit> searchHits =
+          efoSearcher.searchAll(
+              luceneQuery,
+              new Sort(new SortField(EFOField.TERM.getFieldName(), SortField.Type.STRING, false)),
+              fetchLimit);
+
+      if (searchHits.isEmpty()) {
+        return "";
+      }
+
+      List<TaxonomyNode> nodes = new ArrayList<>();
+      for (EFOSearchHit hit : searchHits) {
+        if (hit == null || hit.term() == null || hit.term().isBlank()) {
+          continue;
+        }
+
+        String efoId = resolveEfoId(hit);
+        if (efoId == null || efoId.isBlank()) {
+          continue;
+        }
+
+        long count = efoTermCountService.countIncludingDescendantsByEfoId(efoId);
+        if (count > 0) {
+          boolean hasChildren = hasChildrenWithMatches(efoId);
+
+          nodes.add(new TaxonomyNode(hit.term(), Math.toIntExact(count), efoId, hasChildren));
+        }
+
+        if (nodes.size() >= limit) {
+          break;
+        }
+      }
+
+      log.debug("EFO search completed: {} results, {} total hits", nodes.size(), nodes.size());
+      return formatAutocompleteNodes(nodes);
+
+    } catch (ParseException e) {
+      log.error("Failed to parse query '{}': {}", query, e.getMessage(), e);
+    } catch (Exception e) {
       log.error("Error executing taxonomy search for query '{}': {}", query, e.getMessage(), e);
-      return "";
     }
+
+    return "";
   }
 
+  private boolean hasChildrenWithMatches(String efoId) {
+    try {
+      List<String> childTerms = efoHierarchyService.getChildrenByEfoId(efoId);
+      if (childTerms == null || childTerms.isEmpty()) {
+        return false;
+      }
+
+      for (String childTerm : childTerms) {
+        if (childTerm == null || childTerm.isBlank()) {
+          continue;
+        }
+        String childId = efoTermMatcher.getEFOId(childTerm);
+        if (childId == null || childId.isBlank()) {
+          continue;
+        }
+
+        long childCount = efoTermCountService.countIncludingDescendantsByEfoId(childId);
+        if (childCount > 0) {
+          return true; // at least one child with matches, so show expand
+        }
+      }
+    } catch (Exception e) {
+      log.warn("Error checking children with matches for EFO ID '{}'", efoId, e);
+    }
+    return false;
+  }
+
+
   /**
-   * Retrieves children of a given EFO term with counts from submission facets.
+   * Retrieves children of a given EFO term with descendant-inclusive counts.
    *
-   * <p>Returns only children that appear in indexed submissions with their submission counts.
-   * Children are determined by the hierarchical facet structure in the submission index.
+   * <p>Returned nodes are direct children, but each count includes that child term and all of its
+   * descendants.
    *
-   * @param efoId the parent EFO term URI (e.g., "http://purl.obolibrary.org/obo/CL_0000000")
+   * @param efoId the parent EFO term URI
    * @param limit maximum number of children (defaults to {@value MAX_TREE_LIMIT} if &lt;= 0)
-   * @return formatted response with child terms and counts; empty string if efoId is null/empty or on error
+   * @return formatted response with child terms and counts; empty string if efoId is null/empty or
+   *     on error
    */
   public String getEfoTreeWithCounts(String efoId, int limit) {
     if (efoId == null || efoId.trim().isEmpty()) {
@@ -421,15 +507,61 @@ public class AutoCompleteService {
     if (limit <= 0) {
       limit = MAX_TREE_LIMIT;
     }
+    boolean atLeastOneChildWithMatches = false;
 
     try {
-      List<TaxonomyNode> children = taxonomySearcher.getChildrenByEfoId(efoId, limit);
-      log.debug("Fetched {} child nodes for EFO term: {}", children.size(), efoId);
-      return taxonomySearcher.formatAsAutocompleteResponse(children);
+      List<String> childTerms = efoHierarchyService.getChildrenByEfoId(efoId);
+      if (childTerms.isEmpty()) {
+        return "";
+      }
 
-    } catch (IOException e) {
+      List<TaxonomyNode> children = new ArrayList<>();
+      for (String childTerm : childTerms) {
+        if (childTerm == null || childTerm.isBlank()) {
+          continue;
+        }
+
+        String childId = efoTermMatcher.getEFOId(childTerm);
+        if (childId == null || childId.isBlank()) {
+          continue;
+        }
+
+        long count = efoTermCountService.countIncludingDescendantsByEfoId(childId);
+        if (count > 0) {
+          boolean hasChildren = efoHierarchyService.hasChildrenByEfoId(childId);
+          atLeastOneChildWithMatches = true;
+          children.add(new TaxonomyNode(childTerm, Math.toIntExact(count), childId, hasChildren));
+        }
+
+        if (children.size() >= limit) {
+          break;
+        }
+      }
+
+      log.debug("Fetched {} child nodes for EFO term: {}", children.size(), efoId);
+      return formatAutocompleteNodes(children);
+
+    } catch (Exception e) {
       log.error("Error fetching EFO tree children for EFO ID '{}': {}", efoId, e.getMessage(), e);
       return "";
     }
+  }
+
+  private String formatAutocompleteNodes(List<TaxonomyNode> nodes) {
+    if (nodes == null || nodes.isEmpty()) {
+      return "";
+    }
+
+    StringBuilder result = new StringBuilder();
+    for (TaxonomyNode node : nodes) {
+      String line =
+          node.term()
+              + "|o|"
+              + (node.hasChildren() && node.efoId() != null ? node.efoId() : "")
+              + "|"
+              + node.count();
+      result.append(line).append("\n");
+    }
+    return result.toString();
   }
 }

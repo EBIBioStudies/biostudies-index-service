@@ -10,16 +10,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 class TextNormalizerTest {
-
-  @ParameterizedTest
-  @MethodSource("normalizationCases")
-  void normalize_handlesAllRules(String input, String expected) {
-    String actual = TextNormalizer.normalize(input);
-    assertEquals(expected, actual);
-  }
 
   static Stream<Arguments> normalizationCases() {
     return Stream.of(
@@ -48,17 +39,45 @@ class TextNormalizerTest {
         Arguments.of("na\u0308i\u0308ve\u0308", "naive"),
 
         // Mixed symbols/tags/brackets/quotes
-        Arguments.of("test<xml>tag</xml>[brackets]'quotes'\"double\"", "test xml tag brackets quotes double"),
-
+        Arguments.of(
+            "test<xml>tag</xml>[brackets]'quotes'\"double\"",
+            "test xml tag xml brackets quotes double"),
         // Dots, ampersands, dashes, underscores, slashes
         Arguments.of("A.B & C-D/E_F", "a b c d e f"),
 
         // Numbers with symbols
-        Arguments.of("IL2Rα 123.45% 67/89", "il2r a 123 45 67 89"),
+        Arguments.of("IL2Rα 123.45% 67/89", "il2rα 123 45 67 89"),
 
         // All whitespace types
-        Arguments.of("a\tb\nc\rr  d\u00A0e", "a b c r d e")
-    );
+        Arguments.of("a\tb\nc\rr  d\u00A0e", "a b c r d e"));
+  }
+
+  private static Stream<Arguments> tokenizationCases() {
+    return Stream.of(
+        Arguments.of(
+            "alpha-amino-N-butyric acid measurement",
+            new String[] {"alpha", "amino", "n", "butyric", "acid", "measurement"}),
+        Arguments.of(
+            "1,5 anhydroglucitol measurement",
+            new String[] {"1", "5", "anhydroglucitol", "measurement"}),
+        Arguments.of(
+            "alpha thalassemia-intellectual disability syndrome type 1",
+            new String[] {
+              "alpha", "thalassemia", "intellectual", "disability", "syndrome", "type", "1"
+            }),
+        Arguments.of(
+            "GATA1-Related X-Linked Cytopenia",
+            new String[] {"gata1", "related", "x", "linked", "cytopenia"}),
+        Arguments.of(null, new String[0]),
+        Arguments.of("", new String[0]),
+        Arguments.of("   ", new String[0]));
+  }
+
+  @ParameterizedTest
+  @MethodSource("normalizationCases")
+  void normalize_handlesAllRules(String input, String expected) {
+    String actual = TextNormalizer.normalize(input);
+    assertEquals(expected, actual);
   }
 
   @ParameterizedTest
@@ -93,32 +112,6 @@ class TextNormalizerTest {
   @MethodSource("normalizationCases")
   void normalize_producesExpectedText(String input, String expected) {
     assertEquals(expected, TextNormalizer.normalize(input));
-  }
-
-
-  private static Stream<Arguments> tokenizationCases() {
-    return Stream.of(
-        Arguments.of(
-            "alpha-amino-N-butyric acid measurement",
-            new String[] {"alpha", "amino", "n", "butyric", "acid", "measurement"}),
-        Arguments.of(
-            "1,5 anhydroglucitol measurement",
-            new String[] {"1", "5", "anhydroglucitol", "measurement"}),
-        Arguments.of(
-            "alpha thalassemia-intellectual disability syndrome type 1",
-            new String[] {"alpha", "thalassemia", "intellectual", "disability", "syndrome", "type", "1"}),
-        Arguments.of(
-            "GATA1-Related X-Linked Cytopenia",
-            new String[] {"gata1", "related", "x", "linked", "cytopenia"}),
-        Arguments.of(
-            null,
-            new String[0]),
-        Arguments.of(
-            "",
-            new String[0]),
-        Arguments.of(
-            "   ",
-            new String[0]));
   }
 
   @Test

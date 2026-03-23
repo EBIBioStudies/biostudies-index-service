@@ -77,7 +77,7 @@ public class FilesIndexer {
 
       populateValueMapAndColumns(context, attributeColumns);
 
-      log.info(
+      log.debug(
           "File indexing complete for {}: {} files, {} sections",
           submissionMetadata.getAccNo(),
           context.getFileCounter().get(),
