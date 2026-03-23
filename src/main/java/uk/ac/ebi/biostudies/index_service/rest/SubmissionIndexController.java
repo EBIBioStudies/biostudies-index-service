@@ -227,6 +227,61 @@ public class SubmissionIndexController {
     return ResponseEntity.accepted().body(new RestResponse<>(true, message, info, List.of()));
   }
 
+  @Operation(
+      summary = "Queue batch of submissions for indexing",
+      description =
+          """
+        POST JSON array of accession numbers (max 100 after deduplication).
+        Returns batch task ID. Monitor with /tasks or /{accNo}/status.""")
+  @ApiResponses(
+      value = {
+        @ApiResponse(
+            responseCode = "202",
+            description = "Batch queued",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = RestResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid list (empty/too large)"),
+        @ApiResponse(responseCode = "503", description = "Service unavailable")
+      })
+  @PostMapping("/batch/reindex")
+  public ResponseEntity<RestResponse<IndexingInfo>> queueBatchIndexSubmissions(
+      @io.swagger.v3.oas.annotations.parameters.RequestBody(
+              description = "Array of submission accessions (1-100 items, auto-cleaned)",
+              required = true,
+              content =
+                  @Content(
+                      mediaType = "application/json",
+                      schema =
+                          @Schema(
+                              type = "array",
+                              description = "List of accNos (deduplicated, null/empty filtered)",
+                              implementation = String[].class)))
+          @RequestBody
+          List<String> rawAccNos) {
+
+    BatchIndexRequest request;
+    try {
+      request = BatchIndexRequest.of(rawAccNos);
+    } catch (IllegalArgumentException e) {
+      log.warn("Batch reindex validation failed: {}", e.getMessage());
+      return ResponseEntity.badRequest()
+          .body(new RestResponse<>(false, e.getMessage(), null, List.of()));
+    }
+
+    log.info("Queue batch indexing: {} unique accNos", request.cleanedSize());
+
+    IndexingInfo info = indexingService.queueBatch(request.accNos());
+
+    String message =
+        String.format(
+            "Batch %s queued (%d unique submissions, position: %d)",
+            info.taskId(), request.cleanedSize(), info.queuePosition());
+
+    return ResponseEntity.accepted().body(new RestResponse<>(true, message, info, List.of()));
+  }
+
   /**
    * Deletes a submission from indexes.
    *

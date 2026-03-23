@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: shared-indexes-pvc
+  namespace: biostudies-index-service-dev
+spec:
+  accessModes: [ReadWriteMany]    # NFS supports RWX
+  resources:
+    requests:
+      storage: 50Gi               # <100Gi per IT note
+  storageClassName: standard-nfs-production

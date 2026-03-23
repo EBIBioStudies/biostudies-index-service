@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: indexer-reader
+  namespace: biostudies-index-service-dev
+spec:
+  serviceName: indexer-reader
+  replicas: 2
+  selector:
+    matchLabels:
+      app: indexer
+      role: reader
+  template:
+    metadata:
+      labels:
+        app: indexer
+        role: reader
+    spec:
+      securityContext:
+        runAsUser: 1741
+        runAsGroup: 1030
+      containers:
+        - name: indexer-reader
+          image: biostudies/biostudies-index-service:dev
+          imagePullPolicy: Always
+          env:
+            - name: INDEXER_ROLE
+              value: reader
+            - name: INDEX_BASE_DIR
+              value: /shared/index/current
+            - name: HTTP_PROXY
+              value: "http://hx-wwwcache.ebi.ac.uk:3128"
+            - name: HTTPS_PROXY
+              value: "http://hx-wwwcache.ebi.ac.uk:3128"
+            - name: http_proxy
+              value: "http://hx-wwwcache.ebi.ac.uk:3128"
+            - name: https_proxy
+              value: "http://hx-wwwcache.ebi.ac.uk:3128"
+            - name: NO_PROXY
+              value: "localhost,127.0.0.1,.cluster.local,.svc,biostudies-beta"
+            - name: no_proxy
+              value: "localhost,127.0.0.1,.cluster.local,.svc,biostudies-beta"
+            - name: JAVA_TOOL_OPTIONS
+              value: >-
+                -Djdk.httpclient.allowHTTP2=false
+                -Djdk.httpclient.keepalive.timeout=0
+                -Djdk.httpclient.HttpClient.log=all
+                -Dhttp.proxyHost=hx-wwwcache.ebi.ac.uk
+                -Dhttp.proxyPort=3128
+                -Dhttps.proxyHost=hx-wwwcache.ebi.ac.uk
+                -Dhttps.proxyPort=3128
+                -Dhttp.nonProxyHosts=localhost|127.0.0.1|*.cluster.local|*.svc|hx-wwwcache.ebi.ac.uk
+          volumeMounts:
+            - name: shared-indexes
+              mountPath: /shared/index
+            - name: security-config
+              mountPath: /app/config
+              readOnly: true
+
+      volumes:
+        - name: shared-indexes
+          persistentVolumeClaim:
+            claimName: shared-indexes-pvc
+        - name: security-config
+          secret:
+            secretName: indexer-security-config

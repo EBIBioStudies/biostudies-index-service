@@ -3,9 +3,11 @@ package uk.ac.ebi.biostudies.index_service.index.efo;
 import com.google.common.io.CharStreams;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -156,7 +158,7 @@ public class EFOLoader {
 
     // 2. Try download (with timeout)
     try {
-      log.warn("External EFO file missing, attempting download...");
+      log.warn("External EFO file ({}) missing, attempting download...", external.toPath());
       downloadEFO(external);
       return external;
     } catch (IOException e) {
@@ -173,7 +175,7 @@ public class EFOLoader {
 
   private void downloadEFO(File target) throws IOException {
     String url = config.getUpdateUrl();
-    log.info("Downloading EFO from {} (~340 MB, may take 30s)", url);
+    log.info("Downloading EFO from {}. Target: {}", url, target.getAbsolutePath());
 
     try {
       URI uri = URI.create(url);
@@ -187,9 +189,21 @@ public class EFOLoader {
         throw new IOException("EFO download failed: HTTP " + responseCode);
       }
 
-      try (InputStream in = conn.getInputStream()) {
-        long bytes = Files.copy(in, target.toPath(), StandardCopyOption.REPLACE_EXISTING);
-        log.info("Downloaded {} MB", bytes / 1_048_576);
+      log.debug("EFO download response: {}", responseCode);
+
+      try (InputStream in = conn.getInputStream();
+          OutputStream out = new FileOutputStream(target)) {
+        byte[] buffer = new byte[8192];
+        long totalBytes = 0;
+        int bytesRead;
+        while ((bytesRead = in.read(buffer)) != -1) {
+          out.write(buffer, 0, bytesRead);
+          totalBytes += bytesRead;
+          if (totalBytes % (10 * 1024 * 1024) == 0) {  // Log every 10MB
+            log.info("Downloaded {} MB", totalBytes / 1_048_576);
+          }
+        }
+        log.info("Downloaded total {} MB", totalBytes / 1_048_576);
       }
     } catch (IOException e) {
       if (target.exists()) {
@@ -199,6 +213,7 @@ public class EFOLoader {
           log.warn("Failed to delete partial EFO download: {}", target.getAbsolutePath());
         }
       }
+      log.debug("Exception when processing EFO download", e);
       throw e;
     }
   }

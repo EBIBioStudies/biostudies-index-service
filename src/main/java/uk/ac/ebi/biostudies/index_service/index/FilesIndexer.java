@@ -60,7 +60,7 @@ public class FilesIndexer {
     Objects.requireNonNull(submissionMetadata, "Submission metadata cannot be null");
     Objects.requireNonNull(writer, "IndexWriter cannot be null");
 
-    log.info(
+    log.debug(
         "Indexing files for {} (remove existing: {})",
         submissionMetadata.getAccNo(),
         removeFileDocuments);
@@ -77,7 +77,7 @@ public class FilesIndexer {
 
       populateValueMapAndColumns(context, attributeColumns);
 
-      log.info(
+      log.debug(
           "File indexing complete for {}: {} files, {} sections",
           submissionMetadata.getAccNo(),
           context.getFileCounter().get(),
@@ -145,8 +145,6 @@ public class FilesIndexer {
       throws IOException {
     List<JsonNode> parentsWithFiles =
         findParentsWithFiles(submissionMetadata.getRawSubmissionJson());
-
-    log.debug("Found {} direct file sections", parentsWithFiles.size());
 
     for (JsonNode parent : parentsWithFiles) {
       indexFilesUnderParent(submissionMetadata.getAccNo(), context, parent, parent);

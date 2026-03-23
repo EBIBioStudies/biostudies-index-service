@@ -62,7 +62,7 @@ public class FileListsIndexer {
     Objects.requireNonNull(submissionMetadata, "Submission metadata cannot be null");
     Objects.requireNonNull(context, "Indexing context cannot be null");
 
-    log.info("Indexing file lists for submission {} ({} files so far)",
+    log.debug("Indexing file lists for submission {} ({} files so far)",
         submissionMetadata.getAccNo(), context.getFileCounter().get());
 
     List<JsonNode> fileListSections = findFileListSections(submissionMetadata.getRawSubmissionJson());

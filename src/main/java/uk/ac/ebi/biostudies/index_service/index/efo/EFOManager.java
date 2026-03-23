@@ -22,6 +22,15 @@ public class EFOManager {
   }
 
   /**
+   * Returns the currently loaded EFO resolver.
+   *
+   * @return active resolver, or null if EFO has not been loaded yet
+   */
+  public EFOTermResolver getResolver() {
+    return efoTermResolver;
+  }
+
+  /**
    * Checks if the EFO index exists in the given directory.
    *
    * @param directory the index directory to check
@@ -71,11 +80,29 @@ public class EFOManager {
    * @throws IOException if indexing fails
    */
   public void indexEFO() throws IOException {
-    if (efoTermResolver == null) {
+    if (getResolver() == null) {
       throw new IllegalStateException("EFO model not loaded. Call loadEFO() first.");
     }
     log.info("Indexing EFO ontology");
-    indexer.indexEFO(efoTermResolver);
+    indexer.indexEFO(getResolver());
     log.info("EFO indexing complete");
   }
+
+  /**
+   * Loads and indexes EFO if the index doesn't exist. This is the equivalent of the legacy
+   * createEfoIndex() method.
+   *
+   * @param directory the index directory to check and populate
+   * @throws IOException if loading or indexing fails
+   */
+//  public void initializeIndexIfNeeded(Directory directory) throws IOException {
+//    if (!isIndexReady(directory)) {
+//      log.info("EFO index does not exist, creating it now");
+//      loadEFO();
+//      indexEFO();
+//      log.info("EFO index created successfully");
+//    } else {
+//      log.info("EFO index already exists, skipping creation");
+//    }
+//  }
 }

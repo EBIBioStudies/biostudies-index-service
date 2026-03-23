@@ -7,6 +7,12 @@ package uk.ac.ebi.biostudies.index_service;
 public final class Constants {
 
   /**
+   * Writer role: when the app is configured to listen to the queue and to modify
+   * Lucene indexes
+   */
+  public static final String WRITER_ROLE = "writer";
+
+  /**
    * Default placeholder value indicating that a field value was not available or not extracted from the JSON input.
    * Use this constant to represent missing or unavailable data consistently across the system.
    */

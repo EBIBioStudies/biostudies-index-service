@@ -94,6 +94,7 @@ public class ExtSubmissionHttpClient {
         }
 
         log.warn("Unexpected status {} for URL: {}", statusCode, url);
+        attempt++;
 
       } catch (Exception e) {
         lastException = e;
@@ -116,6 +117,7 @@ public class ExtSubmissionHttpClient {
         }
       }
     }
+
     throw new SubmissionFetchException(
         "Failed to fetch submission after " + MAX_RETRIES + " attempts", lastException);
   }
@@ -157,9 +159,9 @@ public class ExtSubmissionHttpClient {
       if (rawJson == null) {
         return new ExtSubmissionFetchResult(ExtSubmissionFetchStatus.NOT_FOUND, null, HttpStatus.SC_NOT_FOUND, null);
       }
-      ExtendedSubmissionMetadata metadata =
-          objectMapper.treeToValue(rawJson, ExtendedSubmissionMetadata.class);
-      metadata.setRawSubmissionJson(rawJson);
+      ExtendedSubmissionMetadata metadata = ExtendedSubmissionMetadata.fromJsonNode(rawJson, objectMapper);
+//          objectMapper.treeToValue(rawJson, ExtendedSubmissionMetadata.class);
+//      metadata.setRawSubmissionJson(rawJson);
       return new ExtSubmissionFetchResult(ExtSubmissionFetchStatus.FOUND, metadata, HttpStatus.SC_OK, null);
     } catch (SubmissionFetchException e) {
       if (e.getMessage().contains("HTTP 404")) {

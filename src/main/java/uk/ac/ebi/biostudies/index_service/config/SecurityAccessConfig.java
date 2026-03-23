@@ -26,7 +26,7 @@ public class SecurityAccessConfig {
         .sessionManagement(session ->
             session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))  // Stateless sessions
         .authorizeHttpRequests(auth -> auth
-            .requestMatchers("/health").permitAll()  // Public health endpoint
+            .requestMatchers("/actuator/health").permitAll()  // Public health endpoint
             .anyRequest().permitAll()  // Allow all requests (your interceptors will handle auth)
         )
         .addFilterBefore(tokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);  // Add your custom filter

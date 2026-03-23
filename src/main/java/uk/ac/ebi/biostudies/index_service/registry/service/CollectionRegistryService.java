@@ -83,7 +83,6 @@ public class CollectionRegistryService {
    * @throws IllegalStateException if the resource cannot be loaded or validation fails
    */
   public synchronized CollectionRegistry loadRegistry() {
-    log.debug("Loading collection registry from {}", collectionRegistryLocation);
     CollectionRegistry registry = loader.loadFromResource(collectionRegistryLocation);
     validator.validate(registry);
 

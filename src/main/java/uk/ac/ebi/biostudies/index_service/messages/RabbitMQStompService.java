@@ -23,6 +23,7 @@ import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.client.WebSocketClient;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
+import uk.ac.ebi.biostudies.index_service.config.AppRoleConfig;
 import uk.ac.ebi.biostudies.index_service.index.SubmissionSyncListener;
 
 /**
@@ -47,6 +48,7 @@ public class RabbitMQStompService {
   private final RabbitMqConfig rabbitMqConfig;
   private final RabbitMqMessagingConfig messagingConfig;
   private final SubmissionSyncListener submissionSyncListener;
+  private final AppRoleConfig appRoleConfig;
   private final ObjectMapper objectMapper;
 
   private final AtomicReference<StompSession> stompSession = new AtomicReference<>();
@@ -56,10 +58,12 @@ public class RabbitMQStompService {
   public RabbitMQStompService(
       RabbitMqConfig rabbitMqConfig,
       RabbitMqMessagingConfig messagingConfig,
-      SubmissionSyncListener submissionSyncListener) {
+      SubmissionSyncListener submissionSyncListener,
+      AppRoleConfig appRoleConfig) {
     this.rabbitMqConfig = rabbitMqConfig;
     this.messagingConfig = messagingConfig;
     this.submissionSyncListener = submissionSyncListener;
+    this.appRoleConfig = appRoleConfig;
     this.objectMapper = new ObjectMapper();
   }
 
@@ -126,6 +130,11 @@ public class RabbitMQStompService {
 
     if (!rabbitMqConfig.isEnabled()) {
       log.debug("STOMP client is disabled");
+      return;
+    }
+
+    if (!appRoleConfig.isWriterRole()) {
+      log.debug("Application not configured with writer role");
       return;
     }
 

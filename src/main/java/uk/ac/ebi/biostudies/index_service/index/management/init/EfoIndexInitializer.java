@@ -3,6 +3,7 @@ package uk.ac.ebi.biostudies.index_service.index.management.init;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.lucene.index.IndexWriter;
 import org.springframework.stereotype.Component;
+import uk.ac.ebi.biostudies.index_service.config.AppRoleConfig;
 import uk.ac.ebi.biostudies.index_service.index.IndexName;
 import uk.ac.ebi.biostudies.index_service.index.LuceneIndexConfig;
 import uk.ac.ebi.biostudies.index_service.index.efo.EFOManager;
@@ -17,12 +18,17 @@ public class EfoIndexInitializer implements IndexInitializer {
   private final IndexManager indexManager;
   private final LuceneIndexConfig config;
   private final EFOManager efoManager;
+  private final AppRoleConfig appRoleConfig;
 
   public EfoIndexInitializer(
-      IndexManager indexManager, LuceneIndexConfig config, EFOManager efoManager) {
+      IndexManager indexManager,
+      LuceneIndexConfig config,
+      EFOManager efoManager,
+      AppRoleConfig appRoleConfig) {
     this.indexManager = indexManager;
     this.config = config;
     this.efoManager = efoManager;
+    this.appRoleConfig = appRoleConfig;
   }
 
   /**
@@ -48,6 +54,10 @@ public class EfoIndexInitializer implements IndexInitializer {
   @Override
   public void initializeIfNeeded() {
     try {
+      if (!appRoleConfig.isWriterRole()) {
+        log.info("Not a writer role, skipping EFO index initialization");
+        return;
+      }
       log.info("Checking EFO index status");
 
       // Get the writer which has access to the directory

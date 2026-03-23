@@ -1,8 +1,8 @@
 # BioStudies Index Service
 
-A Spring Boot service for indexing and serving BioStudies search indices using Apache Lucene.
-This service provides fast, full-text search capabilities for biological research submission
-metadata and integrates with RabbitMQ for real-time submission updates.
+This Spring Boot service indexes and serves BioStudies submission metadata using Apache Lucene
+10.3.0, with RabbitMQ for real-time updates. It supports multi-collection schemas (e.g., IDR,
+ArrayExpress) and EFO ontology hierarchies
 
 ## Table of Contents
 
@@ -20,14 +20,20 @@ metadata and integrates with RabbitMQ for real-time submission updates.
 - [Contributing](#contributing)
 - [License](#license)
 
+## Overview
+
+Processes BioStudies submissions (e.g., `{"accno": "S-BSST1432", "section": {...}}`) into searchable
+Lucene indexes. Supports multi-collection schemas (IDR, ArrayExpress, BioModels, etc.), EFO ontology
+hierarchies for facets/autocomplete, and real-time term counts.
+
 ## Features
 
-- **Full-text search** using Apache Lucene 10.3.0
-- **Real-time updates** via RabbitMQ STOMP messaging
-- **RESTful API** for search and index management
-- **Admin endpoints** with IP-based access control
-- **Hot reload** support for development with Spring DevTools
-- **Comprehensive testing** with unit and integration tests
+- **Full-text search** with Lucene 10.3.0, facets, and analyzers per collection.
+- **Real-time submission updates** via RabbitMQ STOMP over WebSocket.
+- **RESTful API** for indexing, searching, and admin tasks
+- **EFO ontology support**: hierarchical indexing, autocomplete, term counts.
+- **Multi-collection registry** from JSON configs (fields, JSONPath extractors).
+- **Kubernetes-ready** (StatefulSets, NFS for indexes)
 
 ## Technology Stack
 
@@ -52,13 +58,16 @@ metadata and integrates with RabbitMQ for real-time submission updates.
 
 1. **Clone the repository**
 
-
 ## Running tests:
+
 ### Unit tests only (default)
+
 mvn test
 
 ### Integration tests only
+
 mvn test -P integration-tests
 
 ### Both
+
 mvn test -P integration-tests

@@ -125,7 +125,9 @@ public class SubmissionDocumentCreator {
     }
 
     // Add EFO hierarchical facets for taxonomy navigation
-    addEFOHierarchicalFacets(doc, valueMap);
+    //addEFOHierarchicalFacets(doc, valueMap);
+    // Add EFO facets for taxonomy navigation
+    addEFOTerms(doc, valueMap);
 
     // Build final faceted document - no taxonomy writer needed
     return taxonomyManager.getFacetsConfig().build(doc);
@@ -269,9 +271,79 @@ public class SubmissionDocumentCreator {
 
       String finalValue = mustLowerCase ? subVal.trim().toLowerCase() : subVal.trim();
       doc.add(new SortedSetDocValuesFacetField(fieldName, finalValue));
-      log.debug("Adding facet field '{}': {}", fieldName, subVal);
     }
   }
+
+      /**
+       * Adds direct EFO term fields to the document.
+       *
+       * <p>For each EFO term found in the submission content, this method stores the matched ontology
+       * identifier and the human-readable label for later autocomplete counting and display.
+       *
+       * <p>This no longer stores hierarchical paths or ancestor prefixes. Those are resolved at query
+       * time from the ontology structure instead.
+       *
+       * @param doc the document to enrich with EFO fields
+       * @param valueMap submission values containing the content field
+       */
+      private void addEFOTerms(Document doc, Map<String, Object> valueMap) {
+        Object content = valueMap.get(Constants.CONTENT);
+
+        if (!(content instanceof String contentStr) || contentStr.isEmpty()) {
+          return;
+        }
+
+        List<String> foundTerms = efoTermMatcher.findEFOTerms(contentStr);
+        if (foundTerms.isEmpty()) {
+          return;
+        }
+
+        Set<String> addedEfoIds = new HashSet<>();
+        Set<String> addedTerms = new HashSet<>();
+        int skippedCount = 0;
+
+        for (String term : foundTerms) {
+          if (term == null || term.trim().isEmpty()) {
+            skippedCount++;
+            continue;
+          }
+
+          String efoId = efoTermMatcher.getEFOId(term);
+          if (efoId == null || efoId.trim().isEmpty()) {
+            log.debug("Skipping EFO term '{}' - no EFO ID found", term);
+            skippedCount++;
+            continue;
+          }
+
+          if (addedEfoIds.add(efoId)) {
+            try {
+              doc.add(new SortedSetDocValuesFacetField("efo_id", efoId));
+            } catch (IllegalArgumentException e) {
+              log.warn("Failed to add EFO ID '{}' for term '{}': {}", efoId, term, e.getMessage());
+              skippedCount++;
+              continue;
+            }
+          }
+
+          if (addedTerms.add(term)) {
+            try {
+              doc.add(new SortedSetDocValuesFacetField("efo_term", term));
+            } catch (IllegalArgumentException e) {
+              log.warn("Failed to add EFO term '{}' for ID '{}': {}", term, efoId, e.getMessage());
+              skippedCount++;
+            }
+          }
+        }
+
+        if (skippedCount > 0) {
+          log.debug("Skipped {} invalid EFO terms/ids during facet creation", skippedCount);
+        }
+
+        log.debug(
+            "Added {} unique EFO IDs and {} unique EFO terms to document",
+            addedEfoIds.size(),
+            addedTerms.size());
+      }
 
   /**
    * Adds EFO hierarchical facets to the document for taxonomy-based navigation.
@@ -301,6 +373,7 @@ public class SubmissionDocumentCreator {
    * @param doc the document to enrich with EFO facets
    * @param valueMap submission values containing content field
    */
+  @Deprecated
   private void addEFOHierarchicalFacets(Document doc, Map<String, Object> valueMap) {
     Object content = valueMap.get(Constants.CONTENT);
 
@@ -310,6 +383,8 @@ public class SubmissionDocumentCreator {
 
     // Find all EFO terms in content
     List<String> foundTerms = efoTermMatcher.findEFOTerms(contentStr);
+    List<String> termEFOIds =
+        foundTerms.stream().map(efoTermMatcher::getEFOId).filter(Objects::nonNull).toList();
 
     if (foundTerms.isEmpty()) {
       return;

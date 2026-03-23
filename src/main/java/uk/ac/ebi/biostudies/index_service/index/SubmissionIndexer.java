@@ -115,12 +115,11 @@ public class SubmissionIndexer {
       valueMap.putAll(fileContext.getValueMap());
       boolean appended = appendFileAttributesToContent(valueMap);
       if (!appended) {
-        log.warn("Failed to append file attributes to content");
+        log.debug("Failed to append file attributes to content");
       }
 
       valueMap.put(SubmissionField.FILE_ATTRIBUTE_NAMES.getName(), columnSet);
       Document indexedDocument = submissionDocumentCreator.createSubmissionDocument(valueMap);
-
       indexingTransactionManager.updateSubmissionDocument(indexedDocument, accNo);
       // TODO: Index extracted links
 

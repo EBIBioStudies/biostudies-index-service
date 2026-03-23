@@ -132,9 +132,8 @@ class SubmissionDocumentCreatorTest {
     when(efoTermMatcher.findEFOTerms("Study of odontoclast function"))
         .thenReturn(List.of("odontoclast"));
 
-    // Mock ancestors: odontoclast → osteoclast → phagocyte
-    when(efoTermMatcher.getAncestors("odontoclast"))
-        .thenReturn(List.of("phagocyte", "osteoclast"));
+    when(efoTermMatcher.getEFOId("odontoclast"))
+        .thenReturn("http://purl.obolibrary.org/obo/cl_0000588");
 
     FacetsConfig facetsConfig = mock(FacetsConfig.class);
     when(taxonomyManager.getFacetsConfig()).thenReturn(facetsConfig);
@@ -149,20 +148,21 @@ class SubmissionDocumentCreatorTest {
     // THEN
     assertThat(result).isNotNull();
 
-    // Assert facet fields by TYPE, and validate facet DIMENSION via toString()
     List<SortedSetDocValuesFacetField> efoFacetFields =
         result.getFields().stream()
             .filter(f -> f instanceof SortedSetDocValuesFacetField)
             .map(f -> (SortedSetDocValuesFacetField) f)
-            .filter(f -> f.toString().contains("dim=efo"))
+            .filter(f -> f.toString().contains("dim=efo_id") || f.toString().contains("dim=efo_term"))
             .toList();
 
     assertThat(efoFacetFields).isNotEmpty();
     assertThat(efoFacetFields.stream().map(Object::toString).toList())
-        .anySatisfy(s -> assertThat(s).contains("path=phagocyte"));
+        .anySatisfy(s -> assertThat(s).contains("dim=efo_id").contains("path=http://purl.obolibrary.org/obo/cl_0000588"));
+    assertThat(efoFacetFields.stream().map(Object::toString).toList())
+        .anySatisfy(s -> assertThat(s).contains("dim=efo_term").contains("path=odontoclast"));
 
     verify(efoTermMatcher).findEFOTerms("Study of odontoclast function");
-    verify(efoTermMatcher).getAncestors("odontoclast");
+    verify(efoTermMatcher).getEFOId("odontoclast");
   }
 
   @Test
