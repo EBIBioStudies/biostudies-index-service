@@ -5,7 +5,6 @@ theme:
 
 nav:
   - Home: index.md
-  - API: api.md
   - Deployment: deployment.md
   - Parsers: parsers.md
   - Analyzers: analyzers.md
