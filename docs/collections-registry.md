@@ -14,6 +14,9 @@ set of property definitions that describe:
 - optional analyzers,
 - and indexing behavior flags such as retrieval, sorting, and multi-value handling.
 
+To see the full registry, see
+[collections-registry.json](https://raw.githubusercontent.com/EBIBioStudies/biostudies-index-service/main/src/main/resources/schema/collections-registry.json)
+
 ## Purpose
 
 The registry is the central schema configuration for the indexing pipeline. It allows the system to

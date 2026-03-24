@@ -6,8 +6,8 @@ theme:
 nav:
   - Home: index.md
   - Deployment: deployment.md
-  - Parsers: parsers.md
-  - Analyzers: analyzers.md
+  - Collections Registry: collections-registry.md
+  - Lucene indexes: lucene-indexes.md
 
 plugins:
   - search
