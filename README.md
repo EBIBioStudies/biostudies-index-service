@@ -71,3 +71,6 @@ mvn test -P integration-tests
 ### Both
 
 mvn test -P integration-tests
+
+## Additional documentation
+See [biostudies-index-service](https://ebibiostudies.github.io/biostudies-index-service/) for more information.
