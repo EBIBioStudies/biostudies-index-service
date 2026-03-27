@@ -1,5 +1,12 @@
 package uk.ac.ebi.biostudies.index_service.rest;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.lucene.search.Query;
@@ -16,6 +23,9 @@ import uk.ac.ebi.biostudies.index_service.search.query.LuceneQueryBuilder;
 @Slf4j
 @RestController
 @RequestMapping("/api/v1")
+@Tag(
+    name = "Facets",
+    description = "Operations for retrieving facet dimensions and values for submissions")
 public class FacetsController {
 
   private static final String JSON_UNICODE_MEDIA_TYPE = "application/json;charset=UTF-8";
@@ -39,13 +49,55 @@ public class FacetsController {
    * @param allParams all request parameters (includes facets and fields)
    * @return list of facet dimensions with their values and hit counts
    */
+  @Operation(
+      summary = "List facet dimensions for a collection",
+      description =
+          "Retrieves all available facet dimensions and their values for the given collection, "
+              + "optionally filtered by a free-text query and field filters.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Facets successfully retrieved",
+            content =
+                @Content(
+                    mediaType = JSON_UNICODE_MEDIA_TYPE,
+                    array =
+                        @ArraySchema(schema = @Schema(implementation = FacetDimensionDTO.class)))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid request parameters",
+            content = @Content),
+        @ApiResponse(
+            responseCode = "500",
+            description = "Unexpected server error",
+            content = @Content)
+      })
   @GetMapping(value = "/{collection}/facets", produces = JSON_UNICODE_MEDIA_TYPE)
   public List<FacetDimensionDTO> getFacets(
-      @PathVariable String collection,
-      @RequestParam(value = "query", required = false, defaultValue = "") String queryString,
-      @RequestParam(value = "limit", required = false, defaultValue = "" + DEFAULT_FACET_LIMIT)
+      @Parameter(
+              description = "Collection identifier (e.g. 'public', 'arrayexpress')",
+              required = true)
+          @PathVariable
+          String collection,
+      @Parameter(
+              description = "Optional free-text search query used as the base filter",
+              example = "cancer cell line")
+          @RequestParam(value = "query", required = false, defaultValue = "")
+          String queryString,
+      @Parameter(
+              description =
+                  "Maximum number of facet values to return per dimension. "
+                      + "If not provided, a default limit is applied.",
+              example = "20")
+          @RequestParam(value = "limit", required = false, defaultValue = "" + DEFAULT_FACET_LIMIT)
           Integer limit,
-      @RequestParam MultiValueMap<String, String> allParams) {
+      @Parameter(
+              description =
+                  "All request parameters, including facet filters (`facet.*`) and field filters. "
+                      + "Examples: `facet.organism=human`, `author=Smith`.",
+              hidden = true)
+          @RequestParam
+          MultiValueMap<String, String> allParams) {
 
     // Separate facets from other fields
     Map<String, List<String>> selectedFacets = extractParameters(allParams, "facet.");
@@ -68,12 +120,56 @@ public class FacetsController {
    * @param allParams all request parameters (includes facets and fields)
    * @return facet dimension with its values and hit counts, or null if dimension not found
    */
+  @Operation(
+      summary = "Get a single facet dimension",
+      description =
+          "Retrieves a specific facet dimension and its values for the given collection, "
+              + "optionally filtered by a free-text query and other facet or field filters.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Facet dimension successfully retrieved",
+            content =
+                @Content(
+                    mediaType = JSON_UNICODE_MEDIA_TYPE,
+                    schema = @Schema(implementation = FacetDimensionDTO.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Facet dimension not found for the given collection",
+            content = @Content),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid request parameters",
+            content = @Content),
+        @ApiResponse(
+            responseCode = "500",
+            description = "Unexpected server error",
+            content = @Content)
+      })
   @GetMapping(value = "/{collection}/facets/{dimension}", produces = JSON_UNICODE_MEDIA_TYPE)
   public FacetDimensionDTO getDimension(
-      @PathVariable String collection,
-      @PathVariable String dimension,
-      @RequestParam(value = "query", required = false, defaultValue = "") String queryString,
-      @RequestParam MultiValueMap<String, String> allParams) {
+      @Parameter(
+              description = "Collection identifier (e.g. 'public', 'arrayexpress')",
+              required = true)
+          @PathVariable
+          String collection,
+      @Parameter(
+              description = "Facet dimension name (e.g. 'facet.organism', 'facet.collection')",
+              required = true)
+          @PathVariable
+          String dimension,
+      @Parameter(
+              description = "Optional free-text search query used as the base filter",
+              example = "single-cell RNA-seq")
+          @RequestParam(value = "query", required = false, defaultValue = "")
+          String queryString,
+      @Parameter(
+              description =
+                  "All request parameters, including facet filters (`facet.*`) and field filters. "
+                      + "Examples: `facet.organism=mouse`, `year=2023`.",
+              hidden = true)
+          @RequestParam
+          MultiValueMap<String, String> allParams) {
 
     // Separate facets from other fields
     Map<String, List<String>> selectedFacets = extractParameters(allParams, "facet.");

@@ -35,25 +35,22 @@ import uk.ac.ebi.biostudies.index_service.search.files.FileSearchService;
  * Lucene queries to {@link FileSearchService}.
  */
 @Slf4j
-@Tag(name = "File Search", description = "Search files within BioStudies submissions")
+@Tag(name = "File Search", description = "Search indexed files metadata")
 @RestController
 @RequestMapping("/api/v1/files")
-
 public class FileSearchController {
 
   private static final String DRAW = "draw";
   private static final String RECORDS_TOTAL = "recordsTotal";
   private static final String RECORDS_FILTERED = "recordsFiltered";
   private static final String DATA = "data";
-
+  // A map for getting the field names as the UI expects them
+  private static final Map<String, String> FIELD_MAP =
+      Map.of(
+          FileDocumentField.NAME.getName(), "Name",
+          FileDocumentField.SIZE.getName(), "Size");
   private final FileSearchService fileSearchService;
   private final ObjectMapper objectMapper = new ObjectMapper();
-
-  // A map for getting the field names as the UI expects them
-  private static final Map<String, String> FIELD_MAP = Map.of(
-      FileDocumentField.NAME.getName(), "Name",
-      FileDocumentField.SIZE.getName(), "Size"
-  );
 
   public FileSearchController(FileSearchService fileSearchService) {
     this.fileSearchService = fileSearchService;
@@ -63,8 +60,6 @@ public class FileSearchController {
   private static String sanitizeFieldName(String name) {
     return name.replaceAll("[\\[\\]()\\s]", "_");
   }
-
-
 
   /**
    * Searches files for a submission using DataTables server-side parameters.
@@ -203,18 +198,6 @@ public class FileSearchController {
 
       if (metadata && fm.metadata() != null && !fm.metadata().isEmpty()) {
         Map<String, String> m = fm.metadata();
-
-//        // Legacy top-level fields mapped from index fields
-//        // file_name -> Name
-//        if (m.containsKey(FileDocumentField.NAME.getName())) {
-//          doc.put("Name", m.get(FileDocumentField.NAME.getName()));
-//        }
-//        // file_size -> Size (string)
-//        if (m.containsKey(FileDocumentField.SIZE.getName())) {
-//          doc.put("Size", m.get(FileDocumentField.SIZE.getName()));
-//        } else {
-//          doc.put("Size", String.valueOf(fm.size()));
-//        }
 
         // Copy any remaining metadata fields that are not already mapped, if you need them
         m.forEach(

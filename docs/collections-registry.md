@@ -14,6 +14,45 @@ set of property definitions that describe:
 - optional analyzers,
 - and indexing behavior flags such as retrieval, sorting, and multi-value handling.
 
+```mermaid
+classDiagram
+    class CollectionRegistryService {
+      +loadRegistry() CollectionRegistry
+      +getCurrentRegistry() CollectionRegistry
+      +getPropertyDescriptor(String) PropertyDescriptor
+      +getPublicAndCollectionRelatedProperties(String) List~PropertyDescriptor~
+    }
+
+    class CollectionRegistry {
+      +getCollectionDescriptor(String) CollectionDescriptor
+      +getPropertyDescriptor(String) PropertyDescriptor
+      +getCollections() List~CollectionDescriptor~
+      +getGlobalPropertyRegistry() Map~String, PropertyDescriptor~
+    }
+
+    class CollectionDescriptor {
+      +getCollectionName() String
+      +getProperties() List~PropertyDescriptor~
+      +getPropertyByName(String) PropertyDescriptor
+      +containsProperty(String) boolean
+    }
+
+    class PropertyDescriptor {
+      +getName() String
+      +getTitle() String
+      +getFieldType() FieldType
+      +isFacet() boolean
+      +isSortable() boolean
+      +hasJsonPaths() boolean
+    }
+
+    CollectionRegistryService --> CollectionRegistry : loads / caches
+    CollectionRegistry "1" o-- "*" CollectionDescriptor : contains
+    CollectionDescriptor "1" o-- "*" PropertyDescriptor : contains
+    CollectionRegistry --> PropertyDescriptor : global lookup
+  
+```
+
 To see the full registry, see
 [collections-registry.json](https://raw.githubusercontent.com/EBIBioStudies/biostudies-index-service/main/src/main/resources/schema/collections-registry.json)
 

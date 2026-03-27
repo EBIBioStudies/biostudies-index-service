@@ -7,8 +7,11 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -16,6 +19,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
@@ -25,21 +29,20 @@ import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Integration tests for RabbitMQStompService using Testcontainers.
- * Requires Docker to be running - tests are skipped if Docker is not available.
+ * Integration tests for RabbitMQStompService using Testcontainers. Requires Docker to be running -
+ * tests are skipped if Docker is not available.
  */
 @SpringBootTest
-@TestPropertySource(properties = {
-    "messaging.stomp.enabled=true",
-    "rabbitmq.stomp.loginHeader=guest",
-    "rabbitmq.stomp.passwordHeader=guest"
-})
+@ActiveProfiles("test")
+@TestPropertySource(
+    properties = {
+      "messaging.stomp.enabled=true",
+      "rabbitmq.stomp.loginHeader=guest",
+      "rabbitmq.stomp.passwordHeader=guest"
+    })
 class RabbitMQStompServiceIT {
 
-  // Removed the static block and manually start container logic.
-  // Testcontainers will now read ryuk.disabled=true from ~/.testcontainers.properties 
-  // at the very first moment the library is touched.
-
+  static final Path tempDir;
   static GenericContainer<?> rabbitmq =
       new GenericContainer<>(DockerImageName.parse("rabbitmq:3-management"))
           .withExposedPorts(5672, 15672, 15674, 61613)
@@ -53,7 +56,23 @@ class RabbitMQStompServiceIT {
               Wait.forLogMessage(".*Server startup complete.*\\n", 1)
                   .withStartupTimeout(Duration.ofSeconds(120)));
 
+  static {
+    try {
+      tempDir = Files.createTempDirectory("rabbitmq-stomp-it-");
+    } catch (IOException e) {
+      throw new ExceptionInInitializerError(e);
+    }
+  }
+
+  // Removed the static block and manually start container logic.
+  // Testcontainers will now read ryuk.disabled=true from ~/.testcontainers.properties
+  // at the very first moment the library is touched.
   @Autowired private RabbitMQStompService stompService;
+
+  @DynamicPropertySource
+  static void registerProperties(DynamicPropertyRegistry registry) {
+    registry.add("index.base-dir", () -> tempDir.toAbsolutePath().toString());
+  }
 
   @BeforeAll
   static void startContainer() {
@@ -72,7 +91,7 @@ class RabbitMQStompServiceIT {
   @BeforeAll
   static void setupRabbitMQ() throws Exception {
     String host = getRoutableHost(rabbitmq.getHost(), rabbitmq.getMappedPort(5672));
-    
+
     ConnectionFactory factory = new ConnectionFactory();
     factory.setHost(host);
     factory.setPort(rabbitmq.getMappedPort(5672));
@@ -90,7 +109,9 @@ class RabbitMQStompServiceIT {
 
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add("rabbitmq.stomp.host", () -> getRoutableHost(rabbitmq.getHost(), rabbitmq.getMappedPort(15674)));
+    registry.add(
+        "rabbitmq.stomp.host",
+        () -> getRoutableHost(rabbitmq.getHost(), rabbitmq.getMappedPort(15674)));
     registry.add("rabbitmq.stomp.port", () -> rabbitmq.getMappedPort(15674));
     registry.add("biostudies.rabbitmq.partial.submission.queue", () -> "test-queue");
     registry.add("biostudies.rabbitmq.exchange.name", () -> "biostudies-exchange");
@@ -121,10 +142,11 @@ class RabbitMQStompServiceIT {
   void testConnectionEstablishment() {
     await()
         .atMost(Duration.ofSeconds(30))
-        .until(() -> {
-          if (!stompService.isSessionConnected()) stompService.startWebSocket();
-          return stompService.isSessionConnected();
-        });
+        .until(
+            () -> {
+              if (!stompService.isSessionConnected()) stompService.startWebSocket();
+              return stompService.isSessionConnected();
+            });
     assertTrue(stompService.isSessionConnected());
   }
 
