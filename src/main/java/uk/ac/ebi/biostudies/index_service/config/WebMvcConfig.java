@@ -32,9 +32,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
   }
 
   @Override
+  // TODO: Remove temporal allowance for localhist/ribs. We should create a reverse proxy for this
   public void addCorsMappings(CorsRegistry registry) {
     registry.addMapping("/api/**")
-        .allowedOrigins("http://localhost:8080")
+        .allowedOrigins("http://localhost:8080", "http://ribs:8080")
         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
         .allowedHeaders("*")
         .allowCredentials(true);
